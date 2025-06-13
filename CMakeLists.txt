@@ -24,8 +24,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 find_package(webm REQUIRED)
 find_package(vpx REQUIRED)
-target_include_directories(${PROJECT_NAME} PRIVATE ${webm_INCLUDE_DIRS} ${vpx_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${webm_LIBRARIES} ${vpx_LIBRARIES})
+find_package(opus REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${webm_INCLUDE_DIRS} ${vpx_INCLUDE_DIRS} ${opus_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${webm_LIBRARIES} ${vpx_LIBRARIES} ${opus_LIBRARIES})
 
 if(WEBMD_BUILD_TEST_MAIN)
     add_executable(test ${CMAKE_CURRENT_LIST_DIR}/test/main.cpp)

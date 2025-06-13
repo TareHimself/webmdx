@@ -1,42 +1,26 @@
-# FindWebm.cmake
-message(FATAL_ERROR "Findopus Not Implemented")
-find_path(webm_INCLUDE_DIR
-    NAMES mkvmuxer/mkvmuxer.h
-    PATH_SUFFIXES webm
+# Findopus.cmake
+find_path(opus_INCLUDE_DIR
+    NAMES opus.h
+        PATH_SUFFIXES opus
 )
 
-find_library(webm_LIBRARY
-    NAMES "webm"
+find_library(opus_LIBRARY
+    NAMES "opus"
 )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(webm
+find_package_handle_standard_args(opus
     REQUIRED_VARS
-        webm_INCLUDE_DIR
-        webm_LIBRARY
+        opus_INCLUDE_DIR
+        opus_LIBRARY
 )
 
-if(webm_FOUND)
-    set(webm_INCLUDE_DIRS ${webm_INCLUDE_DIR})
-    set(webm_LIBRARIES ${webm_LIBRARY})
+if(opus_FOUND)
+    set(opus_INCLUDE_DIRS ${opus_INCLUDE_DIR})
+    set(opus_LIBRARIES ${opus_LIBRARY})
 endif()
 
-## Optional: wayland-cursor (used for pointer images)
-#find_path(WAYLAND_CURSOR_INCLUDE_DIR
-#    NAMES wayland-cursor.h
-#    PATH_SUFFIXES wayland
-#)
-#
-#find_library(WAYLAND_CURSOR_LIBRARY
-#    NAMES wayland-cursor
-#)
-
-#if(WAYLAND_CURSOR_LIBRARY AND WAYLAND_CURSOR_INCLUDE_DIR)
-#    set(WAYLAND_CURSOR_LIBRARIES ${WAYLAND_CURSOR_LIBRARY})
-#    set(WAYLAND_CURSOR_INCLUDE_DIRS ${WAYLAND_CURSOR_INCLUDE_DIR})
-#endif()
-
 mark_as_advanced(
-        webm_INCLUDE_DIR
-        webm_LIBRARY
+        opus_INCLUDE_DIR
+        opus_LIBRARY
 )

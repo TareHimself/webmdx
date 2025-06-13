@@ -21,21 +21,6 @@ if(webm_FOUND)
     set(webm_LIBRARIES ${webm_LIBRARY})
 endif()
 
-## Optional: wayland-cursor (used for pointer images)
-#find_path(WAYLAND_CURSOR_INCLUDE_DIR
-#    NAMES wayland-cursor.h
-#    PATH_SUFFIXES wayland
-#)
-#
-#find_library(WAYLAND_CURSOR_LIBRARY
-#    NAMES wayland-cursor
-#)
-
-#if(WAYLAND_CURSOR_LIBRARY AND WAYLAND_CURSOR_INCLUDE_DIR)
-#    set(WAYLAND_CURSOR_LIBRARIES ${WAYLAND_CURSOR_LIBRARY})
-#    set(WAYLAND_CURSOR_INCLUDE_DIRS ${WAYLAND_CURSOR_INCLUDE_DIR})
-#endif()
-
 mark_as_advanced(
         webm_INCLUDE_DIR
         webm_LIBRARY

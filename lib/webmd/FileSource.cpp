@@ -1,6 +1,7 @@
 #include "webmd/FileSource.h"
+
 namespace wd {
-    FileSource::FileSource(const std::filesystem::path &path) {
+    FileSource::FileSource(const std::filesystem::path &path): _pos(0) {
         _path = path;
         _fileSize = std::filesystem::file_size(_path);
         _fileStream = std::ifstream(_path, std::ios::binary);
