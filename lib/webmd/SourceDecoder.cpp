@@ -54,11 +54,11 @@ namespace wd {
     }
 
     AudioTrack SourceDecoder::GetAudioTrack() const {
-        return _impl->audioTracks[_impl->selectedAudioTrack];
+        return _impl->audioTracks[_impl->selectedAudioTrackIndex];
     }
 
     VideoTrack SourceDecoder::GetVideoTrack() const {
-        return _impl->videoTracks[_impl->selectedVideoTrack];
+        return _impl->videoTracks[_impl->selectedVideoTrackIndex];
     }
 
     void SourceDecoder::SetVideoCallback(const VideoCallback &callback) {

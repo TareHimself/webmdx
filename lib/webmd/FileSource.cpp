@@ -11,7 +11,7 @@ namespace wd {
         _fileStream.close();
     }
 
-    void FileSource::Read(size_t pos, size_t size, unsigned char *data) {
+    void FileSource::Read(std::size_t pos, std::size_t size, unsigned char *data) {
         if (_pos != pos) {
             _fileStream.seekg(pos);
             _pos = pos;
@@ -20,11 +20,11 @@ namespace wd {
         _pos += size;
     }
 
-    size_t FileSource::GetLength() const {
+    std::size_t FileSource::GetLength() const {
         return _fileSize;
     }
 
-    size_t FileSource::GetAvailable() const {
+    std::size_t FileSource::GetAvailable() const {
         return _fileSize;
     }
 

@@ -20,12 +20,13 @@ namespace wd {
         std::vector<VideoTrack> videoTracks{};
         std::unordered_map<int, TrackType> trackNumbersToTrackTypes{};
         std::unordered_map<int, int> trackNumbersToTrackIndexes{};
-        int selectedAudioTrack = 0;
-        int selectedVideoTrack = 0;
+        int selectedAudioTrackIndex = 0;
+        int selectedVideoTrackIndex = 0;
         const mkvparser::Cluster *cluster{};
         TrackPosition audioPosition{};
         TrackPosition videoPosition{};
-        long long lastDecodedFramePos = -1;
+        long long lastDecodedAudioPos = -1;
+        long long lastDecodedVideoPos = -1;
 
         vpx_codec_ctx_t videoDecoder{};
         OpusDecoder *audioDecoder{nullptr};
@@ -41,9 +42,9 @@ namespace wd {
 
         bool Decode(double seconds);
 
-        bool DecodeVideo(TrackPosition &start, TrackPosition &end);
+        bool DecodeVideo(const TrackPosition &start, const TrackPosition &end);
 
-        bool DecodeAudio(TrackPosition &start, TrackPosition &end);
+        bool DecodeAudio(const TrackPosition &start, const TrackPosition &end);
 
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 

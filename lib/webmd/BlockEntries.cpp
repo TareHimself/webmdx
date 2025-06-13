@@ -1,9 +1,9 @@
-#include "BlockIterable.h"
+#include "BlockEntries.h"
 
 #include <stdexcept>
 
 namespace wd {
-    BlockIterable::Iterator &BlockIterable::Iterator::operator++() {
+    BlockEntries::Iterator &BlockEntries::Iterator::operator++() {
         const mkvparser::BlockEntry *current = _current;
         do {
             auto cluster = current->GetCluster();
@@ -27,12 +27,12 @@ namespace wd {
         return *this;
     }
 
-    BlockIterable::Iterator::Iterator(const mkvparser::BlockEntry *entry, const BlockIterable *source) {
+    BlockEntries::Iterator::Iterator(const mkvparser::BlockEntry *entry, const BlockEntries *source) {
         _current = entry;
         _source = source;
     }
 
-    BlockIterable::BlockIterable(const TrackPosition &begin, const TrackPosition &end) {
+    BlockEntries::BlockEntries(const TrackPosition &begin, const TrackPosition &end) {
         _begin = begin;
         _end = end;
         _trackNumber = _begin.entry->GetBlock()->GetTrackNumber();

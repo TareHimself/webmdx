@@ -10,11 +10,11 @@ namespace wd {
 
         ~FileSource() override;
 
-        void Read(size_t pos, size_t size, unsigned char *data) override;
+        void Read(std::size_t pos, std::size_t size, unsigned char *data) override;
 
-        [[nodiscard]] size_t GetLength() const override;
+        [[nodiscard]] std::size_t GetLength() const override;
 
-        [[nodiscard]] size_t GetAvailable() const override;
+        [[nodiscard]] std::size_t GetAvailable() const override;
 
         [[nodiscard]] bool IsWriting() const override;
 

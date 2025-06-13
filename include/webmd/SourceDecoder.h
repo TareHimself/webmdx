@@ -1,6 +1,8 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <span>
+
 #include "AudioTrack.h"
 #include "ISource.h"
 #include "VideoTrack.h"
@@ -8,8 +10,8 @@
 namespace wd {
     class SourceDecoder {
     public:
-        using VideoCallback = std::function<void(double, const std::vector<uint8_t> &)>;
-        using AudioCallback = std::function<void(double, const std::vector<uint8_t> &)>;
+        using VideoCallback = std::function<void(double, const std::span<uint8_t> &)>;
+        using AudioCallback = std::function<void(double, const std::span<float> &)>;
         struct Impl;
 
         SourceDecoder();

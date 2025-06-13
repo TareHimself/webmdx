@@ -9,7 +9,6 @@ A very basic library for decoding of webm videos. Primarily made for use in [Rin
 
 ## issues
 - no seeking
-- no audio
 - little to no libwebm error handling
 - unreliable versioning
 - little to no comments

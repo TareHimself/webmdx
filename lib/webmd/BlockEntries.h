@@ -1,13 +1,18 @@
 #pragma once
+#include <utility>
 #include <webm/mkvparser/mkvparser.h>
 
 #include "TrackPosition.h"
+#include "webmd/utils.h"
 
 namespace wd {
-    struct BlockIterable {
+    struct BlockEntries {
         struct Iterator {
-            const mkvparser::Block *operator*() const { return _current->GetBlock(); }
-            const mkvparser::Block *operator->() const { return _current->GetBlock(); }
+            using PairType = std::pair<const mkvparser::Block *,double>;
+
+
+            const mkvparser::BlockEntry* operator*() const { return _current; }
+            const mkvparser::BlockEntry* operator->() const { return _current; }
 
             // Prefix increment
             Iterator &operator++();
@@ -23,14 +28,14 @@ namespace wd {
             friend bool operator!=(const Iterator &a, const Iterator &b) { return a._current != b._current; };
             bool completed{false};
 
-            Iterator(const mkvparser::BlockEntry *entry, const BlockIterable *source);
+            Iterator(const mkvparser::BlockEntry *entry, const BlockEntries *source);
 
         private:
-            const BlockIterable *_source;
-            const mkvparser::BlockEntry *_current{nullptr};
+            const BlockEntries *_source;
+            const mkvparser::BlockEntry * _current{};
         };
 
-        BlockIterable(const TrackPosition &begin, const TrackPosition &end);
+        BlockEntries(const TrackPosition &begin, const TrackPosition &end);
 
         [[nodiscard]] Iterator begin() const { return Iterator{_begin.entry, this}; }
         [[nodiscard]] Iterator end() const { return Iterator{_end.entry, this}; }

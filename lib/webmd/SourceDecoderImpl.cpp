@@ -2,11 +2,12 @@
 
 #include <cstring>
 #include <iostream>
+#include <span>
 #include <bits/std_thread.h>
 #include <vpx/vp8dx.h>
 #include <vpx/vpx_decoder.h>
 
-#include "BlockIterable.h"
+#include "BlockEntries.h"
 #include "webmd/utils.h"
 
 namespace wd {
@@ -94,13 +95,13 @@ namespace wd {
         videoPosition = {};
         videoPosition.cluster = cluster;
         cluster->GetFirst(videoPosition.entry);
-        FindBlockOfType(videoPosition.entry, TrackType::Video, position, selectedVideoTrack);
+        FindBlockOfType(videoPosition.entry, TrackType::Video, position, selectedVideoTrackIndex);
         if (videoDecoder.iface != nullptr) {
             vpx_codec_destroy(&videoDecoder);
             videoDecoder = {};
         }
 
-        auto &selectedTrack = videoTracks[selectedVideoTrack];
+        auto &selectedTrack = videoTracks[selectedVideoTrackIndex];
         vpx_codec_dec_cfg_t cfg = {};
         cfg.h = selectedTrack.height;
         cfg.w = selectedTrack.width;
@@ -130,12 +131,12 @@ namespace wd {
         audioPosition = {};
         audioPosition.cluster = cluster;
         cluster->GetFirst(audioPosition.entry);
-        FindBlockOfType(audioPosition.entry, TrackType::Audio, position, selectedAudioTrack);
+        FindBlockOfType(audioPosition.entry, TrackType::Audio, position, selectedAudioTrackIndex);
         if (audioDecoder) {
             opus_decoder_destroy(audioDecoder);
             audioDecoder = nullptr;
         }
-        auto &selectedTrack = audioTracks[selectedAudioTrack];
+        auto &selectedTrack = audioTracks[selectedAudioTrackIndex];
         int error;
         audioDecoder = opus_decoder_create(selectedTrack.sampleRate, selectedTrack.channels, &error);
         if (error != OPUS_OK) {
@@ -187,10 +188,10 @@ namespace wd {
         }
 
         if (hasAudio) {
-            FindBlockOfType(finalAudio, TrackType::Audio, position, selectedAudioTrack);
+            FindBlockOfType(finalAudio, TrackType::Audio, position, selectedAudioTrackIndex);
         }
         if (hasVideo) {
-            FindBlockOfType(finalVideo, TrackType::Video, position, selectedVideoTrack);
+            FindBlockOfType(finalVideo, TrackType::Video, position, selectedVideoTrackIndex);
         }
 
 
@@ -256,15 +257,16 @@ namespace wd {
         }
     }
 
-    bool SourceDecoder::Impl::DecodeVideo(TrackPosition &start, TrackPosition &end) {
-        BlockIterable blocks{start, end};
+    bool SourceDecoder::Impl::DecodeVideo(const TrackPosition &start, const TrackPosition &end) {
+        BlockEntries entries{start, end};
         std::vector<unsigned char> buffer{};
-        for (auto block: blocks) {
+        for (const auto entry : entries) {
+            const auto block = entry->GetBlock();
             const auto frameCount = block->GetFrameCount();
 
             for (auto i = 0; i < frameCount; i++) {
                 auto frame = block->GetFrame(i);
-                if (frame.pos == lastDecodedFramePos) {
+                if (frame.pos == lastDecodedVideoPos) {
                     continue;
                 }
                 if (buffer.size() < frame.len) {
@@ -272,7 +274,7 @@ namespace wd {
                 }
                 frame.Read(&reader, buffer.data());
                 auto decodeError = vpx_codec_decode(&videoDecoder, buffer.data(), frame.len, nullptr, 0);
-                lastDecodedFramePos = frame.pos;
+                lastDecodedVideoPos = frame.pos;
                 if (decodeError != VPX_CODEC_OK) {
                     std::cerr << "Decode error: " << vpx_codec_error(&videoDecoder) << std::endl;
                     InitVideoDecoder();
@@ -280,61 +282,6 @@ namespace wd {
                 }
             }
         }
-        // auto cluster = start.cluster;
-        // auto entry = start.entry;
-        // // if (!start.isFirstDecode) {
-        // //     decltype(TrackPosition::entry) prev = entry;
-        // //     cluster->GetNext(prev,entry);
-        // // }
-        // auto trackNumber = entry->GetBlock()->GetTrackNumber();
-        // std::vector<unsigned char> buffer{};
-        // while (!cluster->EOS()) {
-        //     while (entry != nullptr && !entry->EOS()) {
-        //         const auto block = entry->GetBlock();
-        //         const mkvparser::BlockEntry * nextEntry;
-        //
-        //         if (cluster->GetNext(entry,nextEntry) < 0) {
-        //             return false;
-        //         }
-        //
-        //         if (block->GetTrackNumber() != trackNumber) {
-        //             entry = nextEntry;
-        //             continue;
-        //         }
-        //
-        //         const auto frameCount = block->GetFrameCount();
-        //
-        //         for (auto  i = 0; i < frameCount; i++) {
-        //             auto frame = block->GetFrame(i);
-        //             if (frame.pos == lastDecodedFramePos) {
-        //                 continue;
-        //             }
-        //             if (buffer.size() < frame.len) {
-        //                 buffer.resize(frame.len);
-        //             }
-        //             frame.Read(&reader,buffer.data());
-        //             auto decodeError = vpx_codec_decode(&videoDecoder,buffer.data(),frame.len,nullptr,0);
-        //             lastDecodedFramePos = frame.pos;
-        //             if (decodeError != VPX_CODEC_OK) {
-        //                 std::cerr << "Decode error: " << vpx_codec_error(&videoDecoder) << std::endl;
-        //                 InitVideoDecoder();
-        //                 return false;
-        //             }
-        //         }
-        //
-        //         if (entry == end.entry) {
-        //             break;
-        //         }
-        //         entry = nextEntry;
-        //     }
-        //
-        //     if (cluster == end.cluster) {
-        //         break;
-        //     }
-        //
-        //     cluster = segment->GetNext(cluster);
-        //     cluster->GetFirst(entry);
-        // }
 
         if (_videoCallback.has_value()) {
             vpx_codec_iter_t iter = nullptr;
@@ -348,7 +295,40 @@ namespace wd {
         return true;
     }
 
-    bool SourceDecoder::Impl::DecodeAudio(TrackPosition &start, TrackPosition &end) {
+    bool SourceDecoder::Impl::DecodeAudio(const TrackPosition &start, const TrackPosition &end) {
+        const BlockEntries entries{start, end};
+        std::vector<uint8_t> buffer{};
+        std::vector<float> samples{};
+        auto &track = audioTracks[selectedAudioTrackIndex];
+        auto audioCallback = _audioCallback.has_value() ? &_audioCallback.value() : nullptr;
+        for (auto entry : entries) {
+            auto block = entry->GetBlock();
+            auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
+            auto frameCount = block->GetFrameCount();
+            for (auto i = 0; i < frameCount; i++) {
+                const auto frame = block->GetFrame(i);
+                if (frame.pos == lastDecodedAudioPos) {
+                    continue;
+                }
+                if (buffer.size() < frame.len) {
+                    buffer.resize(frame.len);
+                }
+                frame.Read(&reader, buffer.data());
+
+                auto frameSize = opus_packet_get_samples_per_frame(buffer.data(),track.sampleRate);
+
+                if (samples.size() < frameSize) {
+                    samples.resize(frameSize * track.channels);
+                }
+
+                auto samplesGotten = opus_decode_float(audioDecoder,buffer.data(), frame.len,samples.data(), frameSize,0);
+                lastDecodedAudioPos = frame.pos;
+
+                if (audioCallback) {
+                    (*audioCallback)(time,std::span(samples.data(),samplesGotten));
+                }
+            }
+        }
         return true;
     }
 
@@ -425,6 +405,9 @@ namespace wd {
     SourceDecoder::Impl::~Impl() {
         if (!videoTracks.empty()) {
             vpx_codec_destroy(&videoDecoder);
+        }
+        if (audioDecoder != nullptr) {
+            opus_decoder_destroy(audioDecoder);
         }
     }
 }
