@@ -11,20 +11,23 @@ endif()
 
 project(webmd LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of webm files")
 
-option(BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
+option(WEBMD_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
 
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
 
 find_package(webm REQUIRED)
 find_package(vpx REQUIRED)
 target_include_directories(${PROJECT_NAME} PRIVATE ${webm_INCLUDE_DIRS} ${vpx_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${webm_LIBRARIES} ${vpx_LIBRARIES})
 
-if(BUILD_TEST_MAIN)
+if(WEBMD_BUILD_TEST_MAIN)
     add_executable(test ${CMAKE_CURRENT_LIST_DIR}/test/main.cpp)
     target_link_libraries(test ${PROJECT_NAME})
     target_include_directories(test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
