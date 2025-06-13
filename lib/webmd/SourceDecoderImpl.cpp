@@ -324,7 +324,7 @@ namespace wd {
                 lastDecodedAudioPos = frame.pos;
 
                 if (audioCallback) {
-                    (*audioCallback)(time,std::span(samples.data(),samplesGotten));
+                    (*audioCallback)(time,std::span(samples.data(),samplesGotten * track.channels));
                 }
             }
         }
