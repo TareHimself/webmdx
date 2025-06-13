@@ -1,5 +1,4 @@
 #include "BlockEntries.h"
-
 #include <stdexcept>
 
 namespace wd {

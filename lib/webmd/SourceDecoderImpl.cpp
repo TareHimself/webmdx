@@ -3,7 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include <span>
-#include <bits/std_thread.h>
+#include <thread>
 #include <vpx/vp8dx.h>
 #include <vpx/vpx_decoder.h>
 
@@ -157,7 +157,6 @@ namespace wd {
         }
 
         position = std::min(position + seconds, duration);
-        auto count = segment->GetCount();
         auto initialCluster = cluster;
         decltype(TrackPosition::entry) initialAudio = audioPosition.entry;
         decltype(TrackPosition::entry) initialVideo = videoPosition.entry;
@@ -249,9 +248,9 @@ namespace wd {
                 int b = (298 * c + 516 * d + 128) >> 8;
 
                 int index = (y * width + x) * 4;
-                outRGBA[index + 0] = std::clamp<uint8_t>(r, 0, 255); // R
-                outRGBA[index + 1] = std::clamp<uint8_t>(g, 0, 255); // G
-                outRGBA[index + 2] = std::clamp<uint8_t>(b, 0, 255); // B
+                outRGBA[index + 0] = std::clamp(r, 0, 255); // R
+                outRGBA[index + 1] = std::clamp(g, 0, 255); // G
+                outRGBA[index + 2] = std::clamp(b, 0, 255); // B
                 outRGBA[index + 3] = 255; // A
             }
         }
