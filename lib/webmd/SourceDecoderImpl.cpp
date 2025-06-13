@@ -109,14 +109,14 @@ namespace wd {
 
         switch (selectedTrack.codec) {
             case VideoCodec::Vpx8: {
-                if (vpx_codec_dec_init(&videoDecoder, vpx_codec_vp8_dx(), nullptr, 0)) {
+                if (vpx_codec_dec_init(&videoDecoder, vpx_codec_vp8_dx(), &cfg, 0)) {
                     std::cerr << "Failed to initialize libvpx decoder: " << vpx_codec_error(&videoDecoder) << std::endl;
                     videoDecoder = {};
                 }
             }
             break;
             case VideoCodec::Vpx9: {
-                if (vpx_codec_dec_init(&videoDecoder, vpx_codec_vp9_dx(), nullptr, 0)) {
+                if (vpx_codec_dec_init(&videoDecoder, vpx_codec_vp9_dx(), &cfg, 0)) {
                     std::cerr << "Failed to initialize libvpx decoder: " << vpx_codec_error(&videoDecoder) << std::endl;
                     videoDecoder = {};
                 }
