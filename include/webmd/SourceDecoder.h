@@ -4,6 +4,7 @@
 #include <span>
 
 #include "AudioTrack.h"
+#include "DecodeResult.h"
 #include "ISource.h"
 #include "VideoTrack.h"
 
@@ -20,7 +21,7 @@ namespace wd {
 
         void SetSource(const std::shared_ptr<ISource> &source) const;
 
-        void Decode(double seconds) const;
+        [[nodiscard]] DecodeResult Decode(double seconds) const;
 
         [[nodiscard]] double GetDuration() const;
 

@@ -14,7 +14,7 @@ namespace wd {
         long long byteDecodePosition = 0;
         mkvparser::Segment *segment{};
         double duration{};
-        double position{};
+        double decodedPosition{};
         long long timecodeScale = 0;
         std::vector<AudioTrack> audioTracks{};
         std::vector<VideoTrack> videoTracks{};
@@ -34,13 +34,15 @@ namespace wd {
         std::optional<VideoCallback> _videoCallback{};
         std::optional<AudioCallback> _audioCallback{};
 
+        std::vector<uint8_t> tempBuffer{};
+
         void Init();
 
         void InitVideoDecoder();
 
         void InitAudioDecoder();
 
-        bool Decode(double seconds);
+        DecodeResult Decode(double seconds);
 
         bool DecodeVideo(const TrackPosition &start, const TrackPosition &end);
 

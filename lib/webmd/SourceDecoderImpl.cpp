@@ -95,7 +95,7 @@ namespace wd {
         videoPosition = {};
         videoPosition.cluster = cluster;
         cluster->GetFirst(videoPosition.entry);
-        FindBlockOfType(videoPosition.entry, TrackType::Video, position, selectedVideoTrackIndex);
+        FindBlockOfType(videoPosition.entry, TrackType::Video, decodedPosition, selectedVideoTrackIndex);
         if (videoDecoder.iface != nullptr) {
             vpx_codec_destroy(&videoDecoder);
             videoDecoder = {};
@@ -131,7 +131,7 @@ namespace wd {
         audioPosition = {};
         audioPosition.cluster = cluster;
         cluster->GetFirst(audioPosition.entry);
-        FindBlockOfType(audioPosition.entry, TrackType::Audio, position, selectedAudioTrackIndex);
+        FindBlockOfType(audioPosition.entry, TrackType::Audio, decodedPosition, selectedAudioTrackIndex);
         if (audioDecoder) {
             opus_decoder_destroy(audioDecoder);
             audioDecoder = nullptr;
@@ -148,19 +148,19 @@ namespace wd {
     }
 
 
-    bool SourceDecoder::Impl::Decode(double seconds) {
-        auto hasAudio = audioDecoder != nullptr && !audioTracks.empty();
-        auto hasVideo = videoDecoder.iface != nullptr && !videoTracks.empty();
+    DecodeResult SourceDecoder::Impl::Decode(double seconds) {
+        const auto hasAudio = audioDecoder != nullptr && !audioTracks.empty();
+        const auto hasVideo = videoDecoder.iface != nullptr && !videoTracks.empty();
 
         if (!hasAudio && !hasVideo) {
-            return true;
+            return DecodeResult::Failed;
         }
 
-        position = std::min(position + seconds, duration);
+        decodedPosition = std::min(decodedPosition + seconds, duration);
         auto initialCluster = cluster;
+        auto isLastCluster = false;
         decltype(TrackPosition::entry) initialAudio = audioPosition.entry;
         decltype(TrackPosition::entry) initialVideo = videoPosition.entry;
-
         decltype(TrackPosition::entry) finalAudio = initialAudio;
         decltype(TrackPosition::entry) finalVideo = initialVideo;
 
@@ -169,8 +169,13 @@ namespace wd {
             const auto start = nanoSecsToSecs(targetCluster->GetFirstTime());
             const auto end = nanoSecsToSecs(targetCluster->GetLastTime());
 
-            // We found the correct cluster
-            if (start <= position && position <= end) {
+            // break when we found the perfect cluster or the last cluster
+            if (start <= decodedPosition && decodedPosition <= end) {
+                break;
+            }
+
+            if (start <= decodedPosition && segment->GetNext(targetCluster)->EOS()) {
+                isLastCluster = true;
                 break;
             }
 
@@ -178,7 +183,7 @@ namespace wd {
         }
 
         if (targetCluster == nullptr || targetCluster->EOS()) {
-            return false;
+            return DecodeResult::Failed;
         }
 
         if (initialCluster != targetCluster) {
@@ -187,16 +192,15 @@ namespace wd {
         }
 
         if (hasAudio) {
-            FindBlockOfType(finalAudio, TrackType::Audio, position, selectedAudioTrackIndex);
+            FindBlockOfType(finalAudio, TrackType::Audio, decodedPosition, selectedAudioTrackIndex);
         }
         if (hasVideo) {
-            FindBlockOfType(finalVideo, TrackType::Video, position, selectedVideoTrackIndex);
+            FindBlockOfType(finalVideo, TrackType::Video, decodedPosition, selectedVideoTrackIndex);
         }
 
 
         auto audioResult = true;
         auto videoResult = true;
-
         cluster = targetCluster;
 
         if (hasAudio && initialAudio != finalAudio) {
@@ -217,7 +221,16 @@ namespace wd {
             videoResult = DecodeVideo(initial, videoPosition);
         }
 
-        return audioResult && videoResult;
+        if (isLastCluster && decodedPosition >= duration) {
+            return DecodeResult::Finished;
+        }
+
+
+        if (audioResult && videoResult) {
+            return DecodeResult::Success;
+        }
+
+        return DecodeResult::Failed;
     }
 
     void ConvertI420ToRGBA(const vpx_image_t *img, std::vector<uint8_t> &outRGBA) {
@@ -258,7 +271,6 @@ namespace wd {
 
     bool SourceDecoder::Impl::DecodeVideo(const TrackPosition &start, const TrackPosition &end) {
         BlockEntries entries{start, end};
-        std::vector<unsigned char> buffer{};
         for (const auto entry : entries) {
             const auto block = entry->GetBlock();
             const auto frameCount = block->GetFrameCount();
@@ -268,11 +280,11 @@ namespace wd {
                 if (frame.pos == lastDecodedVideoPos) {
                     continue;
                 }
-                if (buffer.size() < frame.len) {
-                    buffer.resize(frame.len);
+                if (tempBuffer.size() < frame.len) {
+                    tempBuffer.resize(frame.len);
                 }
-                frame.Read(&reader, buffer.data());
-                auto decodeError = vpx_codec_decode(&videoDecoder, buffer.data(), frame.len, nullptr, 0);
+                frame.Read(&reader, tempBuffer.data());
+                auto decodeError = vpx_codec_decode(&videoDecoder, tempBuffer.data(), frame.len, nullptr, 0);
                 lastDecodedVideoPos = frame.pos;
                 if (decodeError != VPX_CODEC_OK) {
                     std::cerr << "Decode error: " << vpx_codec_error(&videoDecoder) << std::endl;
@@ -296,33 +308,32 @@ namespace wd {
 
     bool SourceDecoder::Impl::DecodeAudio(const TrackPosition &start, const TrackPosition &end) {
         const BlockEntries entries{start, end};
-        std::vector<uint8_t> buffer{};
+
         std::vector<float> samples{};
-        auto &track = audioTracks[selectedAudioTrackIndex];
-        auto audioCallback = _audioCallback.has_value() ? &_audioCallback.value() : nullptr;
-        for (auto entry : entries) {
-            auto block = entry->GetBlock();
-            auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
-            auto frameCount = block->GetFrameCount();
+        const auto &track = audioTracks[selectedAudioTrackIndex];
+        const auto audioCallback = _audioCallback.has_value() ? &_audioCallback.value() : nullptr;
+        for (const auto entry : entries) {
+            const auto block = entry->GetBlock();
+            const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
+            const auto frameCount = block->GetFrameCount();
             for (auto i = 0; i < frameCount; i++) {
                 const auto frame = block->GetFrame(i);
                 if (frame.pos == lastDecodedAudioPos) {
                     continue;
                 }
-                if (buffer.size() < frame.len) {
-                    buffer.resize(frame.len);
+                if (tempBuffer.size() < frame.len) {
+                    tempBuffer.resize(frame.len);
                 }
-                frame.Read(&reader, buffer.data());
+                frame.Read(&reader, tempBuffer.data());
 
-                auto frameSize = opus_packet_get_samples_per_frame(buffer.data(),track.sampleRate);
+                auto frameSize = opus_packet_get_samples_per_frame(tempBuffer.data(),track.sampleRate);
 
                 if (samples.size() < frameSize) {
                     samples.resize(frameSize * track.channels);
                 }
 
-                auto samplesGotten = opus_decode_float(audioDecoder,buffer.data(), frame.len,samples.data(), frameSize,0);
+                auto samplesGotten = opus_decode_float(audioDecoder,tempBuffer.data(), frame.len,samples.data(), frameSize,0);
                 lastDecodedAudioPos = frame.pos;
-
                 if (audioCallback) {
                     (*audioCallback)(time,std::span(samples.data(),samplesGotten * track.channels));
                 }
@@ -408,5 +419,7 @@ namespace wd {
         if (audioDecoder != nullptr) {
             opus_decoder_destroy(audioDecoder);
         }
+        delete segment;
+        segment = nullptr;
     }
 }

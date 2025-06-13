@@ -17,8 +17,8 @@ namespace wd {
         _impl->Init();
     }
 
-    void SourceDecoder::Decode(double seconds) const {
-        _impl->Decode(seconds);
+    DecodeResult SourceDecoder::Decode(double seconds) const {
+        return _impl->Decode(seconds);
     }
 
     double SourceDecoder::GetDuration() const {
@@ -26,7 +26,7 @@ namespace wd {
     }
 
     double SourceDecoder::GetPosition() const {
-        return _impl->position;
+        return _impl->decodedPosition;
     }
 
     bool SourceDecoder::HasAudio() const {

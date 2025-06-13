@@ -14,8 +14,13 @@ void testDecoder(const char* path) {
     decoder->SetAudioCallback([](double time, const std::span<float>& frame) {
         std::cout << "Got Audio " << time << std::endl;
     });
-    while (decoder->GetPosition() < decoder->GetDuration()) {
-        decoder->Decode(0.1);
+    auto decodeResult = decoder->Decode(30);
+    while (decodeResult != wd::DecodeResult::Finished) {
+        if (decodeResult == wd::DecodeResult::Failed) {
+            std::cout << "Decode failed" << std::endl;
+            break;
+        }
+        decodeResult = decoder->Decode(1);
     }
 }
 
