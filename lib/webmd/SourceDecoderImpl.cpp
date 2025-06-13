@@ -289,7 +289,7 @@ namespace wd {
 
             std::vector<uint8_t> outFrame{};
             ConvertI420ToRGBA(frame, outFrame);
-            (*_videoCallback)(end.seconds, outFrame);
+            (*_videoCallback)(end.seconds,std::span(outFrame.data(),outFrame.size()));
         }
 
         return true;
