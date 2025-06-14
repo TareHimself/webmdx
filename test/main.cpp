@@ -12,8 +12,8 @@ void testDecoder(const char* path) {
     std::vector<std::uint8_t> latestFrame{};
     auto track = decoder->GetVideoTrack();
     decoder->SetVideoCallback([&](double time, const std::shared_ptr<wd::IDecodedVideoFrame>& frame) {
-        frame->ToRgba(latestFrame);
-        stbi_write_png("./latest.png",track.width,track.height,4,latestFrame.data(),track.width * 4);
+        // frame->ToRgba(latestFrame);
+        // stbi_write_png("./latest.png",track.width,track.height,4,latestFrame.data(),track.width * 4);
         std::cout << "Got Video " << time << std::endl;
     });
     decoder->SetAudioCallback([](double time, const std::span<float>& frame) {
