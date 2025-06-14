@@ -1,6 +1,7 @@
 #ifdef WEBMD_CODEC_VIDEO_VPX
 #include "VpxDecoder.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <thread>
 #include "webmd/errors.h"
@@ -8,7 +9,17 @@
 
 namespace wd {
     void VpxFrame::ToRgba(const std::span<std::uint8_t> &frame) {
-        libyuv::I420ToRGBA(yPlane.data(),yStride,uPlane.data(),uStride,vPlane.data(),vStride,frame.data(),width * 4,width,height);
+        libyuv::I420ToRGBA(
+            yPlane.data(),
+            yStride,
+            uPlane.data(),
+            uStride,
+            vPlane.data(),
+            vStride,
+            frame.data(),
+            static_cast<int>(width) * 4,
+            static_cast<int>(width),
+            static_cast<int>(height));
         // for (int y = 0; y < height; ++y) {
         //     for (int x = 0; x < width; ++x) {
         //         const int y_val = yPlane[y * yStride + x];
@@ -72,16 +83,17 @@ namespace wd {
         auto result = std::make_shared<VpxFrame>();
         result->width = frame->d_w;
         result->height = frame->d_h;
-        result->yStride = frame->stride[0];
-        result->uStride = frame->stride[1];
-        result->vStride = frame->stride[2];
+        result->yStride = frame->stride[VPX_PLANE_Y];
+        result->uStride = frame->stride[VPX_PLANE_U];
+        result->vStride = frame->stride[VPX_PLANE_V];
         result->yPlane.resize(result->height * result->yStride);
-        result->uPlane.resize(((result->height + 1) / 2) * result->uStride);
-        result->vPlane.resize(((result->height + 1) / 2) * result->vStride);
+        auto halfHeight = static_cast<int>(std::floor(static_cast<float>(result->height) / 2));
+        result->uPlane.resize(halfHeight * result->uStride);
+        result->vPlane.resize(halfHeight * result->vStride);
 
-        memcpy(result->yPlane.data(),frame->planes[0],result->yPlane.size());
-        memcpy(result->uPlane.data(),frame->planes[1],result->uPlane.size());
-        memcpy(result->vPlane.data(),frame->planes[2],result->vPlane.size());
+        memcpy(result->yPlane.data(),frame->planes[VPX_PLANE_Y],result->yPlane.size());
+        memcpy(result->uPlane.data(),frame->planes[VPX_PLANE_U],result->uPlane.size());
+        memcpy(result->vPlane.data(),frame->planes[VPX_PLANE_V],result->vPlane.size());
         return result;
     }
 

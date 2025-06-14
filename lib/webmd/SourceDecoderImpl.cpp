@@ -161,7 +161,7 @@ namespace wd {
             targetCluster = segment->GetNext(targetCluster);
         }
 
-        if ((targetCluster == nullptr || targetCluster->EOS())) {
+        if (targetCluster == nullptr || targetCluster->EOS()) {
             if (decodedPosition < duration) {
                 throw ExpectedDataException();
             }

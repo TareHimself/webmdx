@@ -67,9 +67,15 @@ else()
 endif()
 
 if(WEBMD_BUILD_TEST_MAIN)
+    set(STB_IMAGE_WRITE_DIR ${CMAKE_CURRENT_BINARY_DIR}/stb)
+    set(STB_IMAGE_WRITE_FILE ${STB_IMAGE_WRITE_DIR}/stb_image_write.h)
+    if(NOT EXISTS ${STB_IMAGE_WRITE_FILE})
+        file(MAKE_DIRECTORY ${STB_IMAGE_WRITE_DIR})
+        file(DOWNLOAD  "https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image_write.h" ${STB_IMAGE_WRITE_FILE} SHOW_PROGRESS)
+    endif()
     add_executable(test ${CMAKE_CURRENT_LIST_DIR}/test/main.cpp)
     target_link_libraries(test ${PROJECT_NAME})
-    target_include_directories(test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
+    target_include_directories(test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src ${STB_IMAGE_WRITE_DIR})
 endif()
 
 install(
