@@ -4,32 +4,37 @@
 #include <cstring>
 #include <thread>
 #include "webmd/errors.h"
+#include <libyuv.h>
 
 namespace wd {
     void VpxFrame::ToRgba(std::vector<std::uint8_t> &frame) {
-        frame.resize(width * height * 4); // RGBA = 4 bytes per pixel
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                const int y_val = yPlane[y * yStride + x];
-                const int u_val = uPlane[(y / 2) * uStride + (x / 2)];
-                const int v_val = vPlane[(y / 2) * vStride + (x / 2)];
-
-                // Convert YUV to RGB
-                const int c = y_val - 16;
-                const int d = u_val - 128;
-                const int e = v_val - 128;
-
-                int r = (298 * c + 409 * e + 128) >> 8;
-                int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
-                int b = (298 * c + 516 * d + 128) >> 8;
-
-                const int index = (y * width + x) * 4;
-                frame[index + 0] = std::clamp(r, 0, 255); // R
-                frame[index + 1] = std::clamp(g, 0, 255); // G
-                frame[index + 2] = std::clamp(b, 0, 255); // B
-                frame[index + 3] = 255; // A
-            }
+        auto targetFrameSize = width * height * 4;
+        if (frame.size() != targetFrameSize) {
+            frame.resize(targetFrameSize); // RGBA = 4 bytes per pixel
         }
+        libyuv::I420ToRGBA(yPlane.data(),yStride,uPlane.data(),uStride,vPlane.data(),vStride,frame.data(),width * 4,width,height);
+        // for (int y = 0; y < height; ++y) {
+        //     for (int x = 0; x < width; ++x) {
+        //         const int y_val = yPlane[y * yStride + x];
+        //         const int u_val = uPlane[(y / 2) * uStride + (x / 2)];
+        //         const int v_val = vPlane[(y / 2) * vStride + (x / 2)];
+        //
+        //         // Convert YUV to RGB
+        //         const int c = y_val - 16;
+        //         const int d = u_val - 128;
+        //         const int e = v_val - 128;
+        //
+        //         int r = (298 * c + 409 * e + 128) >> 8;
+        //         int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
+        //         int b = (298 * c + 516 * d + 128) >> 8;
+        //
+        //         const int index = (y * width + x) * 4;
+        //         frame[index + 0] = std::clamp(r, 0, 255); // R
+        //         frame[index + 1] = std::clamp(g, 0, 255); // G
+        //         frame[index + 2] = std::clamp(b, 0, 255); // B
+        //         frame[index + 3] = 255; // A
+        //     }
+        // }
     }
 
     VpxDecoder::VpxDecoder(const VideoTrack &track) {

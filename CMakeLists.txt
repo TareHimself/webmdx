@@ -17,13 +17,14 @@ file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp")
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
 find_package(Webm REQUIRED)
-target_include_directories(${PROJECT_NAME} PRIVATE ${Webm_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${Webm_LIBRARIES})
+find_package(Yuv REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Webm_INCLUDE_DIRS} ${Yuv_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${Webm_LIBRARIES} ${Yuv_LIBRARIES})
 
 find_package(Vpx)
 if(Vpx_FOUND)
@@ -72,7 +73,7 @@ if(WEBMD_BUILD_TEST_MAIN)
 endif()
 
 install(
-        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/
         DESTINATION include/
 )
 
