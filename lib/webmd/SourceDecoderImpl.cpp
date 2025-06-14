@@ -225,11 +225,10 @@ namespace wd {
                 frame.Read(&reader, tempBuffer.data());
                 videoDecoder->Decode(std::span(tempBuffer.data(),frame.len),time);
                 lastDecodedVideoPos = frame.pos;
+                if (_videoCallback.has_value()) {
+                    (*_videoCallback)(end.seconds,videoDecoder->GetFrame());
+                }
             }
-        }
-
-        if (_videoCallback.has_value()) {
-            (*_videoCallback)(end.seconds,videoDecoder->GetFrame());
         }
     }
 
