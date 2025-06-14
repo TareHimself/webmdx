@@ -9,7 +9,8 @@
 
 namespace wd {
     void VpxFrame::ToRgba(const std::span<std::uint8_t> &frame) {
-        libyuv::I420ToRGBA(
+        auto colorMatrix = libyuv::kYuvH709Constants;
+        libyuv::I420ToRGBAMatrix(
             yPlane.data(),
             yStride,
             uPlane.data(),
@@ -18,6 +19,7 @@ namespace wd {
             vStride,
             frame.data(),
             static_cast<int>(width) * 4,
+            &colorMatrix,
             static_cast<int>(width),
             static_cast<int>(height));
         // for (int y = 0; y < height; ++y) {
@@ -94,6 +96,7 @@ namespace wd {
         memcpy(result->yPlane.data(),frame->planes[VPX_PLANE_Y],result->yPlane.size());
         memcpy(result->uPlane.data(),frame->planes[VPX_PLANE_U],result->uPlane.size());
         memcpy(result->vPlane.data(),frame->planes[VPX_PLANE_V],result->vPlane.size());
+
         return result;
     }
 
