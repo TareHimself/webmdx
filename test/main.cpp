@@ -9,17 +9,22 @@ void testDecoder(const char* path) {
     auto source = std::make_shared<wd::FileSource>(path);
     auto decoder = std::make_shared<wd::SourceDecoder>();
     decoder->SetSource(source);
+    auto channels = 4;
     std::vector<std::uint8_t> latestFrame{};
     auto track = decoder->GetVideoTrack();
     decoder->SetVideoCallback([&](double time, const std::shared_ptr<wd::IDecodedVideoFrame>& frame) {
-        // frame->ToRgba(latestFrame);
-        // stbi_write_png("./latest.png",track.width,track.height,4,latestFrame.data(),track.width * 4);
+        // if (time > 75) {
+        //     frame->ToRgba(latestFrame);
+        //
+        //     stbi_write_png("./latest.png",track.width,track.height,channels,latestFrame.data(),track.width * channels);
+        //     std::cout << "" << std::endl;
+        // }
         std::cout << "Got Video " << time << std::endl;
     });
     decoder->SetAudioCallback([](double time, const std::span<float>& frame) {
         std::cout << "Got Audio " << time << std::endl;
     });
-    latestFrame.resize(track.width * track.height * 4);
+    latestFrame.resize(track.width * track.height * channels);
     auto decodeResult = decoder->Decode(30);
     while (decodeResult != wd::DecodeResult::Finished) {
         decodeResult = decoder->Decode(1);

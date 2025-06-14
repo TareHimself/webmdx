@@ -9,8 +9,28 @@
 
 namespace wd {
     void VpxFrame::ToRgba(const std::span<std::uint8_t> &frame) {
-        auto colorMatrix = libyuv::kYuvH709Constants;
-        libyuv::I420ToRGBAMatrix(
+
+        if (alphaPlane.empty()) {
+            alphaStride = yStride;
+            alphaPlane = std::vector<uint8_t>(yPlane.size(), 255);
+        }
+        libyuv::I420AlphaToABGR(
+        yPlane.data(),
+       yStride,
+       uPlane.data(),
+       uStride,
+       vPlane.data(),
+       vStride,
+       alphaPlane.data(),
+       alphaStride,
+       frame.data(),
+       static_cast<int>(width) * 4,
+       static_cast<int>(width),
+       static_cast<int>(height),
+       0
+       );
+        return;
+        libyuv::I420ToRAW(
             yPlane.data(),
             yStride,
             uPlane.data(),
@@ -19,7 +39,6 @@ namespace wd {
             vStride,
             frame.data(),
             static_cast<int>(width) * 4,
-            &colorMatrix,
             static_cast<int>(width),
             static_cast<int>(height));
         // for (int y = 0; y < height; ++y) {
@@ -88,15 +107,24 @@ namespace wd {
         result->yStride = frame->stride[VPX_PLANE_Y];
         result->uStride = frame->stride[VPX_PLANE_U];
         result->vStride = frame->stride[VPX_PLANE_V];
+
         result->yPlane.resize(result->height * result->yStride);
+
         auto halfHeight = static_cast<int>(std::floor(static_cast<float>(result->height) / 2));
         result->uPlane.resize(halfHeight * result->uStride);
         result->vPlane.resize(halfHeight * result->vStride);
+
+
 
         memcpy(result->yPlane.data(),frame->planes[VPX_PLANE_Y],result->yPlane.size());
         memcpy(result->uPlane.data(),frame->planes[VPX_PLANE_U],result->uPlane.size());
         memcpy(result->vPlane.data(),frame->planes[VPX_PLANE_V],result->vPlane.size());
 
+        if (auto alphaPlane = frame->planes[VPX_PLANE_ALPHA]) {
+            result->alphaStride = frame->stride[VPX_PLANE_ALPHA];
+            result->alphaPlane.resize(result->height * result->alphaStride);
+            memcpy(result->alphaPlane.data(),alphaPlane,result->alphaPlane.size());
+        }
         return result;
     }
 

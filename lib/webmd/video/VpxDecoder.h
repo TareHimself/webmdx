@@ -11,9 +11,11 @@ namespace wd {
         int yStride{0};
         int vStride{0};
         int uStride{0};
-        std::vector<uint8_t> yPlane{};
-        std::vector<uint8_t> uPlane{};
-        std::vector<uint8_t> vPlane{};
+        int alphaStride{0};
+        std::vector<std::uint8_t> yPlane{};
+        std::vector<std::uint8_t> uPlane{};
+        std::vector<std::uint8_t> vPlane{};
+        std::vector<std::uint8_t> alphaPlane{};
         void ToRgba(const std::span<std::uint8_t> &frame) override;
     };
 
