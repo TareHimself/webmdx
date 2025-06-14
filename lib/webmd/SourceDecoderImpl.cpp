@@ -155,8 +155,9 @@ namespace wd {
         decltype(TrackPosition::entry) finalVideo = initialVideo;
 
         auto targetCluster = initialCluster;
-        const auto currentEnd = nanoSecsToSecs(targetCluster->GetLastTime());
         do {
+            const auto currentEnd = nanoSecsToSecs(targetCluster->GetLastTime());
+
             if (decodedPosition <= currentEnd) {
                 break;
             }
@@ -194,7 +195,7 @@ namespace wd {
             audioPosition.cluster = cluster;
             audioPosition.entry = finalAudio;
             audioPosition.isFirstDecode = false;
-            audioPosition.UpdateSeconds();
+            audioPosition.UseBlockTime();
             DecodeAudio(initial, audioPosition);
         }
 
@@ -203,7 +204,7 @@ namespace wd {
             videoPosition.cluster = cluster;
             videoPosition.entry = finalVideo;
             videoPosition.isFirstDecode = false;
-            videoPosition.UpdateSeconds();
+            videoPosition.UseBlockTime();
             DecodeVideo(initial, videoPosition);
         }
 

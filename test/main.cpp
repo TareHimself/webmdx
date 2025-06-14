@@ -25,9 +25,9 @@ void testDecoder(const char* path) {
         std::cout << "Got Audio " << time << std::endl;
     });
     latestFrame.resize(track.width * track.height * channels);
-    auto decodeResult = decoder->Decode(30);
+    auto decodeResult = decoder->Decode(0.1);
     while (decodeResult != wd::DecodeResult::Finished) {
-        decodeResult = decoder->Decode(1);
+        decodeResult = decoder->Decode(0.1);
     }
 }
 

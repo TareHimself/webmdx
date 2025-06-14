@@ -6,8 +6,7 @@ namespace wd {
         const mkvparser::Cluster *cluster{};
         const mkvparser::BlockEntry *entry{};
         bool isFirstDecode{true};
-        double seconds{};
-
-        void UpdateSeconds();
+        double time{};
+        void UseBlockTime();
     };
 }

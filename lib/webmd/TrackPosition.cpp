@@ -3,7 +3,7 @@
 #include "webmd/utils.h"
 
 namespace wd {
-    void TrackPosition::UpdateSeconds() {
-        seconds = nanoSecsToSecs(entry->GetBlock()->GetTime(cluster));
+    void TrackPosition::UseBlockTime() {
+        time = nanoSecsToSecs(entry->GetBlock()->GetTime(cluster));
     }
 }
