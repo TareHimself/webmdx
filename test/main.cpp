@@ -26,6 +26,11 @@ void testDecoder(const char* path) {
     });
     latestFrame.resize(track.width * track.height * channels);
     auto decodeResult = decoder->Decode(0.1);
+    decoder->Seek(13.2f);
+    decodeResult = decoder->Decode(0.1);
+    decoder->Seek(200);
+    decodeResult = decoder->Decode(0.1);
+    decoder->Seek(10);
     while (decodeResult != wdx::DecodeResult::Finished) {
         decodeResult = decoder->Decode(0.1);
     }

@@ -21,6 +21,10 @@ namespace wdx {
         return _impl->Decode(seconds);
     }
 
+    void SourceDecoder::Seek(double seconds) const {
+        _impl->Seek(seconds);
+    }
+
     double SourceDecoder::GetDuration() const {
         return _impl->duration;
     }

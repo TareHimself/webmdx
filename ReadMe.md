@@ -10,7 +10,7 @@ A very basic library for decoding of webm videos. Primarily made for use in [Rin
 - <s>dav1d  ( optional )</s>
 
 ## issues
-- no seeking
+- naive seeking
 - little to no libwebm error handling
 - unreliable versioning
 - little to no comments

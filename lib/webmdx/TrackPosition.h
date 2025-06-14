@@ -5,8 +5,8 @@ namespace wdx {
     struct TrackPosition {
         const mkvparser::Cluster *cluster{};
         const mkvparser::BlockEntry *entry{};
-        bool isFirstDecode{true};
         double time{};
         void UseBlockTime();
+        void SetCluster(const mkvparser::Cluster *newCluster);
     };
 }

@@ -44,11 +44,22 @@ namespace wdx {
 
         void InitAudioDecoder();
 
+
+
+        /**
+         * Finds the best cluster after the current one for the provided timestamp
+         */
+        bool FindBestCluster(double timestamp,const mkvparser::Cluster* start,const mkvparser::Cluster*& best) const;
+
+
+
         DecodeResult Decode(double seconds);
 
-        void DecodeVideo(const TrackPosition &start, const TrackPosition &end);
+        void Seek(double timestamp);
 
-        void DecodeAudio(const TrackPosition &start, const TrackPosition &end);
+        void DecodeVideo(const TrackPosition &start, const TrackPosition &end, bool decodeOnly = false);
+
+        void DecodeAudio(const TrackPosition &start, const TrackPosition &end, bool decodeOnly = false);
 
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 
@@ -56,6 +67,7 @@ namespace wdx {
 
         bool FindBlockOfType(const mkvparser::BlockEntry *&start, TrackType type, double time, int trackIndex);
 
+        static const mkvparser::BlockEntry * FindRecentKeyBlock(double timestamp,const mkvparser::BlockEntry* initialEntry,const mkvparser::BlockEntry* targetBlockEntry);
         ~Impl();
     };
 }

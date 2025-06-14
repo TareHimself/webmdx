@@ -9,7 +9,7 @@ namespace wdx {
             const auto segment = cluster->m_pSegment;
             const mkvparser::BlockEntry *next;
             cluster->GetNext(current, next);
-
+            auto time = nanoSecsToSecs(current->GetBlock()->GetTime(cluster));
             if (next == nullptr || next->EOS()) {
                 cluster = segment->GetNext(cluster);
                 if (cluster == nullptr || cluster->EOS()) {

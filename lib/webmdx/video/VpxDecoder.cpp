@@ -93,7 +93,7 @@ namespace wdx {
 
     void VpxDecoder::Decode(const std::span<std::uint8_t> &input, double timestamp) {
         if (const auto decodeResult = vpx_codec_decode(&_codec,input.data(),input.size(), nullptr, 0); decodeResult != VPX_CODEC_OK) {
-            throw VideoDecoderError("Failed to decode vpx packet");
+            throw VideoDecoderError(std::string("Failed to decode vpx packet ") + vpx_codec_error(&_codec));
         }
     }
 

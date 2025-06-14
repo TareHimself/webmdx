@@ -24,6 +24,8 @@ namespace wdx {
 
         [[nodiscard]] DecodeResult Decode(double seconds) const;
 
+        void Seek(double seconds) const;
+
         [[nodiscard]] double GetDuration() const;
 
         [[nodiscard]] double GetPosition() const;
