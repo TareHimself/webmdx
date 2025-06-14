@@ -7,11 +7,7 @@
 #include <libyuv.h>
 
 namespace wd {
-    void VpxFrame::ToRgba(std::vector<std::uint8_t> &frame) {
-        auto targetFrameSize = width * height * 4;
-        if (frame.size() != targetFrameSize) {
-            frame.resize(targetFrameSize); // RGBA = 4 bytes per pixel
-        }
+    void VpxFrame::ToRgba(const std::span<std::uint8_t> &frame) {
         libyuv::I420ToRGBA(yPlane.data(),yStride,uPlane.data(),uStride,vPlane.data(),vStride,frame.data(),width * 4,width,height);
         // for (int y = 0; y < height; ++y) {
         //     for (int x = 0; x < width; ++x) {

@@ -14,7 +14,7 @@ namespace wd {
         std::vector<uint8_t> yPlane{};
         std::vector<uint8_t> uPlane{};
         std::vector<uint8_t> vPlane{};
-        void ToRgba(std::vector<std::uint8_t> &frame) override;
+        void ToRgba(const std::span<std::uint8_t> &frame) override;
     };
 
     class VpxDecoder final : public IVideoDecoder {

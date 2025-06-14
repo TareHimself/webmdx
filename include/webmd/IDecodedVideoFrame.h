@@ -9,6 +9,6 @@ namespace wd {
      */
     struct  IDecodedVideoFrame {
         virtual ~IDecodedVideoFrame() = default;
-        virtual void ToRgba(std::vector<std::uint8_t>& frame) = 0;
+        virtual void ToRgba(const std::span<std::uint8_t>& frame) = 0;
     };
 }
