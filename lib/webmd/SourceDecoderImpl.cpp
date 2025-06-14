@@ -127,7 +127,7 @@ namespace wd {
         if (decodedPosition >= duration) {
             return DecodeResult::Finished;
         }
-        
+
         const auto hasAudio = audioDecoder && !audioTracks.empty();
         const auto hasVideo = videoDecoder && !videoTracks.empty();
 

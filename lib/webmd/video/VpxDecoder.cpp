@@ -75,9 +75,9 @@ namespace wd {
         result->yStride = frame->stride[0];
         result->uStride = frame->stride[1];
         result->vStride = frame->stride[2];
-        result->yPlane.reserve(result->height * result->yStride);
-        result->uPlane.reserve(((result->height + 1) / 2) * result->uStride);
-        result->vPlane.reserve(((result->height + 1) / 2) * result->vStride);
+        result->yPlane.resize(result->height * result->yStride);
+        result->uPlane.resize(((result->height + 1) / 2) * result->uStride);
+        result->vPlane.resize(((result->height + 1) / 2) * result->vStride);
 
         memcpy(result->yPlane.data(),frame->planes[0],result->yPlane.size());
         memcpy(result->uPlane.data(),frame->planes[1],result->uPlane.size());
