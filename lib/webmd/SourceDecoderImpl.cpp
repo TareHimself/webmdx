@@ -124,6 +124,10 @@ namespace wd {
 
 
     DecodeResult SourceDecoder::Impl::Decode(const double seconds) {
+        if (decodedPosition >= duration) {
+            return DecodeResult::Finished;
+        }
+        
         const auto hasAudio = audioDecoder && !audioTracks.empty();
         const auto hasVideo = videoDecoder && !videoTracks.empty();
 
@@ -157,8 +161,11 @@ namespace wd {
             targetCluster = segment->GetNext(targetCluster);
         }
 
-        if (targetCluster == nullptr || targetCluster->EOS()) {
-            throw ExpectedDataException();
+        if ((targetCluster == nullptr || targetCluster->EOS())) {
+            if (decodedPosition < duration) {
+                throw ExpectedDataException();
+            }
+            return DecodeResult::Finished;
         }
 
         if (initialCluster != targetCluster) {
