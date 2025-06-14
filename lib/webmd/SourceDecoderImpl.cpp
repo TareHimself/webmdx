@@ -18,19 +18,30 @@ namespace wd {
         long long ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
         segment->Load();
         const auto segmentInfo = segment->GetInfo();
-        duration = static_cast<double>(segmentInfo->GetDuration()) / 1e9;
+
+        if (const auto rawDuration = segmentInfo->GetDuration(); rawDuration == -1) {
+            duration = nanoSecsToSecs(segment->GetLast()->GetTime());
+        }
+        else {
+            duration = nanoSecsToSecs(rawDuration);
+        }
+
         timecodeScale = segmentInfo->GetTimeCodeScale();
         const auto tracks = segment->GetTracks();
         const auto numTracks = tracks->GetTracksCount();
 
-        bool seekSupported = true;
-        auto cues = segment->GetCues();
-        while (!cues->DoneParsing()) {
-            if (!cues->LoadCuePoint()) {
-                seekSupported = false;
-                break;
+        bool seekSupported = false;
+        const auto cues = segment->GetCues();
+        if (cues != nullptr) {
+            seekSupported = true;
+            while (!cues->DoneParsing()) {
+                if (!cues->LoadCuePoint()) {
+                    seekSupported = false;
+                    break;
+                }
             }
         }
+
 
         for (auto i = 0; i < numTracks; i++) {
             switch (const auto track = tracks->GetTrackByIndex(i); track->GetType()) {
@@ -144,27 +155,23 @@ namespace wd {
         decltype(TrackPosition::entry) finalVideo = initialVideo;
 
         auto targetCluster = initialCluster;
-        while (targetCluster != nullptr && !targetCluster->EOS()) {
-            const auto start = nanoSecsToSecs(targetCluster->GetFirstTime());
-            const auto end = nanoSecsToSecs(targetCluster->GetLastTime());
-
-            // break when we found the perfect cluster or the last cluster
-            if (start <= decodedPosition && decodedPosition <= end) {
+        const auto currentEnd = nanoSecsToSecs(targetCluster->GetLastTime());
+        do {
+            if (decodedPosition <= currentEnd) {
                 break;
             }
 
-            if (start <= decodedPosition && segment->GetNext(targetCluster)->EOS()) {
+            const auto next = segment->GetNext(targetCluster);
+
+            if (next == nullptr || next->EOS()) {
                 isLastCluster = true;
                 break;
             }
 
-            targetCluster = segment->GetNext(targetCluster);
-        }
+            targetCluster = next;
+        } while (true);
 
-        if (targetCluster == nullptr || targetCluster->EOS()) {
-            if (decodedPosition < duration) {
-                throw ExpectedDataException();
-            }
+        if (isLastCluster && decodedPosition >= duration) {
             return DecodeResult::Finished;
         }
 
