@@ -5,6 +5,8 @@
 
 #include "SourceReader.h"
 #include "TrackPosition.h"
+#include "webmd/IAudioDecoder.h"
+#include "webmd/IVideoDecoder.h"
 #include "webmd/SourceDecoder.h"
 #include "webmd/TrackType.h"
 
@@ -28,8 +30,8 @@ namespace wd {
         long long lastDecodedAudioPos = -1;
         long long lastDecodedVideoPos = -1;
 
-        vpx_codec_ctx_t videoDecoder{};
-        OpusDecoder *audioDecoder{nullptr};
+        std::shared_ptr<IAudioDecoder> audioDecoder{};
+        std::shared_ptr<IVideoDecoder> videoDecoder{};
 
         std::optional<VideoCallback> _videoCallback{};
         std::optional<AudioCallback> _audioCallback{};
@@ -44,9 +46,9 @@ namespace wd {
 
         DecodeResult Decode(double seconds);
 
-        bool DecodeVideo(const TrackPosition &start, const TrackPosition &end);
+        void DecodeVideo(const TrackPosition &start, const TrackPosition &end);
 
-        bool DecodeAudio(const TrackPosition &start, const TrackPosition &end);
+        void DecodeAudio(const TrackPosition &start, const TrackPosition &end);
 
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 

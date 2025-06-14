@@ -5,13 +5,14 @@
 
 #include "AudioTrack.h"
 #include "DecodeResult.h"
+#include "IDecodedVideoFrame.h"
 #include "ISource.h"
 #include "VideoTrack.h"
 
 namespace wd {
     class SourceDecoder {
     public:
-        using VideoCallback = std::function<void(double, const std::span<uint8_t> &)>;
+        using VideoCallback = std::function<void(double, const std::shared_ptr<IDecodedVideoFrame> &)>;
         using AudioCallback = std::function<void(double, const std::span<float> &)>;
         struct Impl;
 

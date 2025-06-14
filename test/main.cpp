@@ -8,7 +8,7 @@ void testDecoder(const char* path) {
     auto source = std::make_shared<wd::FileSource>(path);
     auto decoder = std::make_shared<wd::SourceDecoder>();
     decoder->SetSource(source);
-    decoder->SetVideoCallback([](double time, const std::span<uint8_t>& frame) {
+    decoder->SetVideoCallback([](double time, const std::shared_ptr<wd::IDecodedVideoFrame>& frame) {
         std::cout << "Got Video " << time << std::endl;
     });
     decoder->SetAudioCallback([](double time, const std::span<float>& frame) {
@@ -16,10 +16,6 @@ void testDecoder(const char* path) {
     });
     auto decodeResult = decoder->Decode(30);
     while (decodeResult != wd::DecodeResult::Finished) {
-        if (decodeResult == wd::DecodeResult::Failed) {
-            std::cout << "Decode failed" << std::endl;
-            break;
-        }
         decodeResult = decoder->Decode(1);
     }
 }

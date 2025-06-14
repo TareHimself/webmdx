@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
-include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
-# include(ExternalProject)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-project(webmd LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of webm files")
+project(Webmd LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of Webm files")
 
 option(WEBMD_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
 
@@ -22,11 +21,49 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>
 )
 
-find_package(webm REQUIRED)
-find_package(vpx REQUIRED)
-find_package(opus REQUIRED)
-target_include_directories(${PROJECT_NAME} PRIVATE ${webm_INCLUDE_DIRS} ${vpx_INCLUDE_DIRS} ${opus_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${webm_LIBRARIES} ${vpx_LIBRARIES} ${opus_LIBRARIES})
+find_package(Webm REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Webm_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${Webm_LIBRARIES})
+
+find_package(Vpx)
+if(Vpx_FOUND)
+    message(STATUS "Vpx Enabled")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${Vpx_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} ${Vpx_LIBRARIES})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WEBMD_CODEC_VIDEO_VPX)
+else()
+    message(STATUS "Vpx Disabled")
+endif()
+
+#find_package(Dav1d)
+if(Dav1d_FOUND)
+    message(STATUS "Av1 Enabled")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${Dav1d_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} ${Dav1d_LIBRARIES})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WEBMD_CODEC_VIDEO_DAV1D)
+else()
+    message(STATUS "Av1 Disabled")
+endif()
+
+find_package(Opus)
+if(Opus_FOUND)
+    message(STATUS "Opus Enabled")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${Opus_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} ${Opus_LIBRARIES})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WEBMD_CODEC_AUDIO_OPUS)
+else()
+    message(STATUS "Opus Disabled")
+endif()
+
+#find_package(Vorbis)
+if(Vorbis_FOUND)
+    message(STATUS "Vorbis Enabled")
+    target_include_directories(${PROJECT_NAME} PRIVATE $Vorbis_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} ${Vorbis_LIBRARIES})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WEBMD_CODEC_AUDIO_VORBIS)
+else()
+    message(STATUS "Vorbis Disabled")
+endif()
 
 if(WEBMD_BUILD_TEST_MAIN)
     add_executable(test ${CMAKE_CURRENT_LIST_DIR}/test/main.cpp)

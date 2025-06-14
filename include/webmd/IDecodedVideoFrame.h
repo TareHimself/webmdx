@@ -1,0 +1,14 @@
+#pragma once
+#include <span>
+#include <cstdint>
+#include <vector>
+namespace wd {
+
+    /**
+     * The decoder specific representation of a video frame, must be valid even if the decoder has been destroyed
+     */
+    struct  IDecodedVideoFrame {
+        virtual ~IDecodedVideoFrame() = default;
+        virtual void ToRgba(std::vector<std::uint8_t>& frame) = 0;
+    };
+}
