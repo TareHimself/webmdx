@@ -8,14 +8,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-project(Webmd LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of Webm files")
+project(webmd LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of Webm files")
 
 option(WEBMD_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
 
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
-
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
         $<INSTALL_INTERFACE:include>
