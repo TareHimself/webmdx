@@ -2,17 +2,17 @@
 #include <memory>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
-#include "webmd/FileSource.h"
-#include "webmd/SourceDecoder.h"
+#include "webmdx/FileSource.h"
+#include "webmdx/SourceDecoder.h"
 
 void testDecoder(const char* path) {
-    auto source = std::make_shared<wd::FileSource>(path);
-    auto decoder = std::make_shared<wd::SourceDecoder>();
+    auto source = std::make_shared<wdx::FileSource>(path);
+    auto decoder = std::make_shared<wdx::SourceDecoder>();
     decoder->SetSource(source);
     auto channels = 4;
     std::vector<std::uint8_t> latestFrame{};
     auto track = decoder->GetVideoTrack();
-    decoder->SetVideoCallback([&](double time, const std::shared_ptr<wd::IDecodedVideoFrame>& frame) {
+    decoder->SetVideoCallback([&](double time, const std::shared_ptr<wdx::IDecodedVideoFrame>& frame) {
         // if (time > 75) {
         //     frame->ToRgba(latestFrame);
         //
@@ -26,7 +26,7 @@ void testDecoder(const char* path) {
     });
     latestFrame.resize(track.width * track.height * channels);
     auto decodeResult = decoder->Decode(0.1);
-    while (decodeResult != wd::DecodeResult::Finished) {
+    while (decodeResult != wdx::DecodeResult::Finished) {
         decodeResult = decoder->Decode(0.1);
     }
 }
