@@ -29,8 +29,10 @@ void testDecoder(const char* path) {
     decoder->Seek(13.2f);
     decodeResult = decoder->Decode(0.1);
     decoder->Seek(200);
-    decodeResult = decoder->Decode(0.1);
-    decoder->Seek(10);
+    decoder->SetSource(source);
+    decoder->Seek(decoder->GetDuration());
+    // decodeResult = decoder->Decode(0.1);
+    // decoder->Seek(10);
     while (decodeResult != wdx::DecodeResult::Finished) {
         decodeResult = decoder->Decode(0.1);
     }

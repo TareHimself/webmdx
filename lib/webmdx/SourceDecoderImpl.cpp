@@ -12,7 +12,19 @@
 #include "webmdx/utils.h"
 
 namespace wdx {
-    void SourceDecoder::Impl::Init() {
+    void SourceDecoder::Impl::SetSource(const std::shared_ptr<ISource> &source) {
+        if (segment != nullptr) {
+            audioTracks = {};
+            videoTracks = {};
+            audioDecoder = {};
+            videoDecoder = {};
+            decodedPosition = 0;
+            duration = 0;
+            byteDecodePosition = 0;
+            delete segment;
+        }
+
+        reader = SourceReader(source);
         mkvparser::EBMLHeader header;
         header.Parse(&reader, byteDecodePosition);
         long long ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
@@ -110,13 +122,18 @@ namespace wdx {
         }
         cluster = segment->GetFirst();
 
-        InitVideoDecoder();
-        InitAudioDecoder();
+        if (!audioTracks.empty()) {
+            InitAudioDecoder();
+        }
+
+        if (!videoTracks.empty()) {
+            InitVideoDecoder();
+        }
+
     }
 
-
     void SourceDecoder::Impl::InitVideoDecoder() {
-        lastDecodedAudioPos = 0;
+        lastDecodedAudioPos = -1;
         videoPosition = {};
         videoPosition.cluster = cluster;
         cluster->GetFirst(videoPosition.entry);
@@ -126,7 +143,7 @@ namespace wdx {
     }
 
     void SourceDecoder::Impl::InitAudioDecoder() {
-        lastDecodedVideoPos = 0;
+        lastDecodedVideoPos = -1;
         audioPosition = {};
         audioPosition.cluster = cluster;
         cluster->GetFirst(audioPosition.entry);

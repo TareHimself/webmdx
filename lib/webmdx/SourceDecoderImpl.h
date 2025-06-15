@@ -38,20 +38,16 @@ namespace wdx {
 
         std::vector<uint8_t> tempBuffer{};
 
-        void Init();
+        void SetSource(const std::shared_ptr<ISource>& source);
 
         void InitVideoDecoder();
 
         void InitAudioDecoder();
 
-
-
         /**
          * Finds the best cluster after the current one for the provided timestamp
          */
         bool FindBestCluster(double timestamp,const mkvparser::Cluster* start,const mkvparser::Cluster*& best) const;
-
-
 
         DecodeResult Decode(double seconds);
 

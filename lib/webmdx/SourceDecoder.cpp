@@ -13,8 +13,7 @@ namespace wdx {
     }
 
     void SourceDecoder::SetSource(const std::shared_ptr<ISource> &source) const {
-        _impl->reader = SourceReader(source);
-        _impl->Init();
+        _impl->SetSource(source);
     }
 
     DecodeResult SourceDecoder::Decode(double seconds) const {
