@@ -12,7 +12,7 @@ project(webmdx LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decodi
 
 option(WEBM_DX_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
 
-file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp")
+file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp" "${CMAKE_CURRENT_LIST_DIR}/lib/*.h")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -36,7 +36,7 @@ else()
     message(STATUS "Vpx Disabled")
 endif()
 
-#find_package(Dav1d)
+find_package(Dav1d)
 if(Dav1d_FOUND)
     message(STATUS "Av1 Enabled")
     target_include_directories(${PROJECT_NAME} PRIVATE ${Dav1d_INCLUDE_DIRS})

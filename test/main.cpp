@@ -13,7 +13,7 @@ void testDecoder(const char* path) {
     std::vector<std::uint8_t> latestFrame{};
     auto track = decoder->GetVideoTrack();
     decoder->SetVideoCallback([&](double time, const std::shared_ptr<wdx::IDecodedVideoFrame>& frame) {
-        // if (time > 75) {
+        // if (time > 2) {
         //     frame->ToRgba(latestFrame);
         //
         //     stbi_write_png("./latest.png",track.width,track.height,channels,latestFrame.data(),track.width * channels);
@@ -26,13 +26,6 @@ void testDecoder(const char* path) {
     });
     latestFrame.resize(track.width * track.height * channels);
     auto decodeResult = decoder->Decode(0.1);
-    decoder->Seek(13.2f);
-    decodeResult = decoder->Decode(0.1);
-    decoder->Seek(200);
-    decoder->SetSource(source);
-    decoder->Seek(decoder->GetDuration());
-    // decodeResult = decoder->Decode(0.1);
-    // decoder->Seek(10);
     while (decodeResult != wdx::DecodeResult::Finished) {
         decodeResult = decoder->Decode(0.1);
     }
