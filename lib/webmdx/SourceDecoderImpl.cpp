@@ -1,12 +1,8 @@
 #include "SourceDecoderImpl.h"
-
 #include <cstring>
 #include <iostream>
 #include <span>
 #include <thread>
-#include <vpx/vp8dx.h>
-#include <vpx/vpx_decoder.h>
-
 #include "BlockEntries.h"
 #include "webmdx/errors.h"
 #include "webmdx/utils.h"

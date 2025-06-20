@@ -1,0 +1,14 @@
+{
+  "name": "webmdx",
+  "version": "1.0.0",
+  "description": "Simple webm video decoder",
+  "homepage": "https://github.com/TareHimself/webmdx",
+  "license": "MIT",
+  "dependencies": [
+    "dav1d",
+    "libwebm",
+    "libyuv",
+    "opus",
+    "libvpx"
+  ]
+}

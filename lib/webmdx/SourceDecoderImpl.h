@@ -1,8 +1,5 @@
 #pragma once
 #include <optional>
-#include <opus.h>
-#include <vpx_codec.h>
-
 #include "SourceReader.h"
 #include "TrackPosition.h"
 #include "webmdx/IAudioDecoder.h"
