@@ -4,7 +4,8 @@ A very basic library for decoding of webm videos. Primarily made for use in [Rin
 
 ## dependencies
 - cmake
-- vcpkg
+- conan
+- task
 
 ## issues
 - naive seeking
