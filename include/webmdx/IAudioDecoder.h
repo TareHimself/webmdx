@@ -9,7 +9,7 @@ namespace wdx {
     /**
      * Interface for all audio decoders
      */
-    struct  IAudioDecoder {
+    struct WEBMDX_API IAudioDecoder {
         virtual ~IAudioDecoder() = default;
 
         /**

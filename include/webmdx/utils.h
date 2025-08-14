@@ -1,5 +1,6 @@
 #pragma once
+#include "export.h"
 
 namespace wdx {
-    double nanoSecsToSecs(long long nanoseconds);
+    WEBMDX_API double nanoSecsToSecs(long long nanoseconds);
 }

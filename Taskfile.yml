@@ -1,0 +1,13 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+    build:
+      - conan create . --build=missing -s build_type=Release -s compiler.cppstd=20
+    build-debug:
+      - conan create . --build=missing -s build_type=Debug  -s compiler.cppstd=20
+    setup:
+      - conan install . --build=missing -s build_type=Release  -s compiler.cppstd=20
+    setup-debug:
+      - conan install . --build=missing -s build_type=Debug  -s compiler.cppstd=20

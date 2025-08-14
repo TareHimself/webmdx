@@ -8,7 +8,7 @@ namespace wdx {
     /**
      * Interface for all video decoders
      */
-    struct  IVideoDecoder {
+    struct WEBMDX_API  IVideoDecoder {
         public:
         virtual ~IVideoDecoder() = default;
         /**

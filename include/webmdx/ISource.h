@@ -1,8 +1,8 @@
 #pragma once
 #include <cstddef>
-
+#include "export.h"
 namespace wdx {
-    class ISource {
+    class WEBMDX_API ISource {
     public:
         virtual ~ISource() = default;
 

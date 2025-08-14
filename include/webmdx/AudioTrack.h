@@ -1,8 +1,9 @@
 #pragma once
 #include "AudioCodec.h"
 #include <cstdint>
+#include "export.h"
 namespace wdx {
-    struct AudioTrack {
+    struct WEBMDX_API AudioTrack {
         int channels{0};
         int sampleRate{0};
         int bitDepth{0};

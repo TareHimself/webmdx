@@ -2,3 +2,5 @@
 cmake-build*
 CmakeUserPresets.json
 vcpkg_installed
+/build
+/conan

@@ -3,6 +3,7 @@
 #include "webmdx/IVideoDecoder.h"
 #include <vpx/vp8dx.h>
 #include <vpx/vpx_decoder.h>
+#include <span>
 namespace wdx {
 
     struct VpxFrame : IDecodedVideoFrame {

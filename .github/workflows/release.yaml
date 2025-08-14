@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - releases
+jobs:
+  build-windows:
+    runs-on: ${{ matrix.os }} 
+    strategy: 
+      matrix: 
+        os: [windows-latest,ubuntu-latest,macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2.4
+        with:
+          sdk-version: 22000
+        
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "3.31.8"
+          ninjaVersion: "^1.11.1"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+            version: 3.x
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Build project
+        run: |
+          conan profile detect
+          conan install . --build=missing -s build_type=Release  -s compiler.cppstd=20
+          conan create . --build=missing -s build_type=Release -s compiler.cppstd=20

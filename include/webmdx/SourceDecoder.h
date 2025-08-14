@@ -10,7 +10,7 @@
 #include "VideoTrack.h"
 
 namespace wdx {
-    class SourceDecoder {
+    class WEBMDX_API SourceDecoder {
     public:
         using VideoCallback = std::function<void(double, const std::shared_ptr<IDecodedVideoFrame> &)>;
         using AudioCallback = std::function<void(double, const std::span<float> &)>;

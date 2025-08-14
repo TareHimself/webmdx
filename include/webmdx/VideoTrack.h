@@ -2,7 +2,7 @@
 #include "VideoCodec.h"
 
 namespace wdx {
-    struct VideoTrack {
+    struct WEBMDX_API VideoTrack {
         int width;
         int height;
         VideoCodec codec;

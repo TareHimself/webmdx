@@ -2,9 +2,9 @@
 #include <filesystem>
 #include <fstream>
 #include "ISource.h"
-
+#include "export.h"
 namespace wdx {
-    class FileSource final : public ISource {
+    class WEBMDX_API FileSource final : public ISource {
     public:
         explicit FileSource(const std::filesystem::path &path);
 
