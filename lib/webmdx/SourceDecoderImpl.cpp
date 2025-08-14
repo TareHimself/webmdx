@@ -61,8 +61,10 @@ namespace wdx {
                     audioTrack.sampleRate = static_cast<int>(asAudio->GetSamplingRate());
                     audioTrack.bitDepth = static_cast<int>(asAudio->GetBitDepth());
                     audioTrack.codecDelay = static_cast<double>(asAudio->GetCodecDelay());
-                    audioTrack.seekPreRoll = nanoSecsToSecs(static_cast<double>(asAudio->GetSeekPreRoll()));
-                    audioTrack.codecPrivate = asAudio->GetCodecPrivate(audioTrack.codecPrivateSize);
+                    audioTrack.seekPreRoll = nanoSecsToSecs(static_cast<long long>(asAudio->GetSeekPreRoll()));
+                        size_t codecPrivateSize = 0;
+                    audioTrack.codecPrivate = asAudio->GetCodecPrivate(codecPrivateSize);
+                        audioTrack.codecPrivateSize = codecPrivateSize;
 
                     auto codec = asAudio->GetCodecId();
 
