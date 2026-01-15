@@ -17,10 +17,10 @@ namespace wdx {
                 return std::make_shared<Av1Decoder>(track);
 #endif
             case VideoCodec::Unknown:
-                throw UnknownVideoCodecError();
+                throw UnknownVideoCodecException();
             default:
                 break;
         }
-        throw UnSupportedVideoCodecError(track.codec);
+        throw UnSupportedVideoCodecException(track.codec);
     }
 }

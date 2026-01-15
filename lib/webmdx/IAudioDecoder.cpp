@@ -15,10 +15,10 @@ namespace wdx {
                 return std::make_shared<VorbisDecoder>(track);
 #endif
             case AudioCodec::Unknown:
-                throw UnknownAudioCodecError();
+                throw UnknownAudioCodecException();
             default:
                 break;
         }
-        throw UnSupportedAudioCodecError(track.codec);
+        throw UnSupportedAudioCodecException(track.codec);
     }
 }

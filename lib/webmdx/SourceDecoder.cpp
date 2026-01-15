@@ -16,7 +16,7 @@ namespace wdx {
         _impl->SetSource(source);
     }
 
-    DecodeResult SourceDecoder::Decode(double seconds) const {
+    DemuxResult SourceDecoder::Demux(double seconds) const {
         return _impl->Decode(seconds);
     }
 
@@ -64,11 +64,23 @@ namespace wdx {
         return _impl->videoTracks[_impl->selectedVideoTrackIndex];
     }
 
-    void SourceDecoder::SetVideoCallback(const VideoCallback &callback) {
-        _impl->_videoCallback = callback;
+    IAudioDecoder* SourceDecoder::GetAudioDecoder() const
+    {
+        return _impl->GetAudioDecoder();
     }
 
-    void SourceDecoder::SetAudioCallback(const AudioCallback &callback) {
-        _impl->_audioCallback = callback;
+    IVideoDecoder* SourceDecoder::GetVideoDecoder() const
+    {
+        return _impl->GetVideoDecoder();
+    }
+
+    void SourceDecoder::SetAudioPacketCallback(const AudioPacketCallback& callback) const
+    {
+        _impl->_audioPacketCallback = callback;
+    }
+
+    void SourceDecoder::SetVideoPacketCallback(const VideoPacketCallback& callback) const
+    {
+        _impl->_videoPacketCallback = callback;
     }
 }

@@ -20,12 +20,52 @@ namespace wdx {
             delete segment;
         }
 
+        // source->MakeAvailable(500);
+
         reader = SourceReader(source);
         mkvparser::EBMLHeader header;
-        header.Parse(&reader, byteDecodePosition);
-        long long ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
-        segment->Load();
-        const auto segmentInfo = segment->GetInfo();
+        auto parsed = header.Parse(&reader, byteDecodePosition);
+
+        //source->MakeAvailable(source->GetLength());
+
+        // std::uint64_t lastRet = 0;
+        std::int64_t ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
+        // libwebm does not specify if more data is needed or if we errored out so we try again till we are sure we have the whole file
+        // while (source->GetAvailable() < source->GetLength()) {
+        //     if (ret == 0)
+        //     {
+        //         break;
+        //     }
+        //
+        //     if (ret > 0)
+        //     {
+        //         if (ret == lastRet)
+        //         {
+        //             source->MakeAvailable(source->GetAvailable() + preloadSize);
+        //         }
+        //         else
+        //         {
+        //             source->MakeAvailable(ret);
+        //         }
+        //         lastRet = ret;
+        //     }
+        //     else
+        //     {
+        //         source->MakeAvailable(source->GetAvailable() + preloadSize);
+        //     }
+        //
+        //     ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
+        // }
+
+        if (ret != 0)
+        {
+            throw HeaderDecodeFailedException();
+        }
+
+        EnsureSegmentHeader(segment);
+        EnsureSegment(segment);
+        auto segmentInfo = segment->GetInfo();
+
 
         if (const auto rawDuration = segmentInfo->GetDuration(); rawDuration == -1) {
             duration = nanoSecsToSecs(segment->GetLast()->GetTime());
@@ -35,16 +75,17 @@ namespace wdx {
         }
 
         timecodeScale = segmentInfo->GetTimeCodeScale();
+
         const auto tracks = segment->GetTracks();
         const auto numTracks = tracks->GetTracksCount();
 
-        bool seekSupported = false;
+        bool enhancedSeekSupported = false;
         const auto cues = segment->GetCues();
         if (cues != nullptr) {
-            seekSupported = true;
+            enhancedSeekSupported = true;
             while (!cues->DoneParsing()) {
                 if (!cues->LoadCuePoint()) {
-                    seekSupported = false;
+                    enhancedSeekSupported = false;
                     break;
                 }
             }
@@ -102,7 +143,7 @@ namespace wdx {
                     trackNumbersToTrackTypes.emplace(trackNumber, TrackType::Video);
 
 
-                    if (seekSupported) {
+                    if (enhancedSeekSupported) {
                         auto cue = cues->GetFirst();
                         while (cue != nullptr) {
                             auto timeSecs = cue->Find(asVideo);
@@ -131,7 +172,7 @@ namespace wdx {
     }
 
     void SourceDecoder::Impl::InitVideoDecoder() {
-        lastDecodedAudioPos = -1;
+        lastAudioPacketPos = -1;
         videoPosition = {};
         videoPosition.cluster = cluster;
         cluster->GetFirst(videoPosition.entry);
@@ -141,7 +182,7 @@ namespace wdx {
     }
 
     void SourceDecoder::Impl::InitAudioDecoder() {
-        lastDecodedVideoPos = -1;
+        lastVideoPacketPos = -1;
         audioPosition = {};
         audioPosition.cluster = cluster;
         cluster->GetFirst(audioPosition.entry);
@@ -171,9 +212,9 @@ namespace wdx {
         best = targetCluster;
         return isLast;
     }
-    DecodeResult SourceDecoder::Impl::Decode(const double seconds) {
+    DemuxResult SourceDecoder::Impl::Decode(const double seconds) {
         if (decodedPosition >= duration) {
-            return DecodeResult::Finished;
+            return DemuxResult::Finished;
         }
 
         const auto hasAudio = audioDecoder && !audioTracks.empty();
@@ -194,7 +235,7 @@ namespace wdx {
         isLastCluster =  FindBestCluster(decodedPosition,cluster,cluster);
 
         if (isLastCluster && decodedPosition >= duration) {
-            return DecodeResult::Finished;
+            return DemuxResult::Finished;
         }
 
         if (initialCluster != cluster) {
@@ -214,7 +255,7 @@ namespace wdx {
             audioPosition.cluster = cluster;
             audioPosition.entry = finalAudio;
             audioPosition.UseBlockTime();
-            DecodeAudio(initial, audioPosition);
+            OutputAudioPackets(initial, audioPosition);
         }
 
         if (hasVideo && initialVideo != finalVideo) {
@@ -222,15 +263,15 @@ namespace wdx {
             videoPosition.cluster = cluster;
             videoPosition.entry = finalVideo;
             videoPosition.UseBlockTime();
-            DecodeVideo(initial, videoPosition);
+            OutputVideoPackets(initial, videoPosition);
         }
 
         if (isLastCluster && decodedPosition >= duration) {
-            return DecodeResult::Finished;
+            return DemuxResult::Finished;
         }
 
 
-        return DecodeResult::Success;
+        return DemuxResult::Success;
     }
 
     void SourceDecoder::Impl::Seek(double timestamp) {
@@ -239,8 +280,10 @@ namespace wdx {
 
         if (!audioTracks.empty()) {
 
-            InitAudioDecoder();
+            audioDecoder->Reset();
             const auto &track = audioTracks[selectedAudioTrackIndex];
+
+            // TODO: Look into the right way to do this
             if (track.seekPreRoll > 0) {
                 const mkvparser::Cluster* preRollCluster{};
 
@@ -255,7 +298,7 @@ namespace wdx {
                 audioPosition.SetCluster(cluster);
                 FindBlockOfType(audioPosition.entry, TrackType::Audio,timestamp, selectedAudioTrackIndex);
                 audioPosition.UseBlockTime();
-                DecodeAudio(initial, audioPosition,true);
+                OutputAudioPackets(initial, audioPosition);
             }
             else {
                 audioPosition.SetCluster(cluster);
@@ -265,7 +308,7 @@ namespace wdx {
         }
 
         if (!videoTracks.empty()) {
-            InitVideoDecoder();
+            videoDecoder->Reset();
 
             videoPosition.SetCluster(cluster);
             FindBlockOfType(videoPosition.entry, TrackType::Video,timestamp,selectedVideoTrackIndex);
@@ -282,59 +325,64 @@ namespace wdx {
                 initial.UseBlockTime();
 
                 // Decode from the last key frame
-                DecodeVideo(initial, videoPosition,true);
+                OutputVideoPackets(initial, videoPosition);
             }
         }
     }
 
-    void SourceDecoder::Impl::DecodeVideo(const TrackPosition &start, const TrackPosition &end, bool decodeOnly) {
+    void SourceDecoder::Impl::OutputVideoPackets(const TrackPosition &start, const TrackPosition &end) {
         BlockEntries entries{start, end};
         for (const auto entry : entries) {
             const auto block = entry->GetBlock();
             const auto frameCount = block->GetFrameCount();
             const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
+            const auto isKeyBlock = block->IsKey();
             for (auto i = 0; i < frameCount; i++) {
                 auto frame = block->GetFrame(i);
-                if (frame.pos == lastDecodedVideoPos) {
+
+                if (frame.pos == lastVideoPacketPos) {
                     continue;
                 }
                 if (tempBuffer.size() < frame.len) {
                     tempBuffer.resize(frame.len);
                 }
                 frame.Read(&reader, tempBuffer.data());
-                videoDecoder->Decode(std::span(tempBuffer.data(),frame.len),time);
-                lastDecodedVideoPos = frame.pos;
-                if (!decodeOnly && _videoCallback.has_value()) {
-                    (*_videoCallback)(time,videoDecoder->GetFrame());
+                if (_videoPacketCallback.has_value())
+                {
+                    auto packet = std::make_shared<Packet>(time,std::span(tempBuffer.data(),frame.len),isKeyBlock && i == 0);
+                    (*_videoPacketCallback)(packet,videoDecoder.get());
                 }
+
+                lastVideoPacketPos = frame.pos;
             }
         }
     }
 
-    void SourceDecoder::Impl::DecodeAudio(const TrackPosition &start, const TrackPosition &end, bool decodeOnly) {
+    void SourceDecoder::Impl::OutputAudioPackets(const TrackPosition &start, const TrackPosition &end) {
         const BlockEntries entries{start, end};
 
         std::vector<float> samples{};
-        const auto audioCallback = _audioCallback.has_value() ? &_audioCallback.value() : nullptr;
         for (const auto entry : entries) {
             const auto block = entry->GetBlock();
             const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
             const auto frameCount = block->GetFrameCount();
+            const auto isKeyBlock = block->IsKey();
             for (auto i = 0; i < frameCount; i++) {
                 const auto frame = block->GetFrame(i);
-                if (frame.pos == lastDecodedAudioPos) {
+                if (frame.pos == lastAudioPacketPos) {
                     continue;
                 }
                 if (tempBuffer.size() < frame.len) {
                     tempBuffer.resize(frame.len);
                 }
                 frame.Read(&reader, tempBuffer.data());
-
-                const auto samplesDecoded = audioDecoder->Decode(std::span(tempBuffer.data(),frame.len),samples, time);
-                lastDecodedAudioPos = frame.pos;
-                if (!decodeOnly && audioCallback) {
-                    (*audioCallback)(time,std::span(samples.data(),samplesDecoded));
+                if (_audioPacketCallback.has_value())
+                {
+                    auto packet = std::make_shared<Packet>(time,std::span(tempBuffer.data(),frame.len), isKeyBlock && i == 0);
+                    (*_audioPacketCallback)(packet,audioDecoder.get());
                 }
+
+                lastAudioPacketPos = frame.pos;
             }
         }
     }
@@ -440,8 +488,121 @@ namespace wdx {
         return result;
     }
 
+    void SourceDecoder::Impl::EnsureSegmentHeader(mkvparser::Segment* segment)
+    {
+        if (segment->GetInfo() != nullptr)
+        {
+            return;
+        }
+
+        for (;;)
+        {
+            auto parseResult = segment->ParseHeaders();
+
+            if (parseResult > 0)
+            {
+                reader.source->MakeAvailable(parseResult);
+                continue;
+            }
+
+            if (parseResult < 0)
+            {
+                if (parseResult == mkvparser::E_BUFFER_NOT_FULL)
+                {
+                    reader.source->MakeAvailable(reader.source->GetAvailable() + 100);
+                }
+                continue;
+            }
+
+            break;
+        }
+        // while (true)
+        // {
+        //     auto r = segment->Load();
+        //     if (r == mkvparser::E_BUFFER_NOT_FULL)
+        //     {
+        //         source->MakeAvailable(source->GetAvailable() + preloadSize);
+        //     }
+        //     else if (r == mkvparser::E_PARSE_FAILED)
+        //     {
+        //         if (segment->DoneParsing())
+        //         {
+        //             break;
+        //         }
+        //
+        //         throw HeaderDecodeFailedError();
+        //     }
+        // }
+        // const auto segmentInfo = segment->GetInfo();
+    }
+
+    void SourceDecoder::Impl::EnsureSegment(mkvparser::Segment* segment)
+    {
+        EnsureSegmentHeader(segment);
+
+        if (IsValidCluster(segment->GetFirst()))
+        {
+            return;
+        }
+
+        for (;;)
+        {
+            auto parseResult = segment->Load();
+
+            if (parseResult > 0)
+            {
+                reader.source->MakeAvailable(parseResult);
+                continue;
+            }
+
+            if (parseResult < 0)
+            {
+
+                auto available = reader.source->GetAvailable();
+
+                if (parseResult == mkvparser::E_BUFFER_NOT_FULL)
+                {
+                    reader.source->MakeAvailable(available + 100);
+                    continue;
+                }
+
+                if (parseResult == mkvparser::E_PARSE_FAILED)
+                {
+                    if (IsValidCluster(segment->GetFirst()))
+                    {
+                        break;
+                    }
+                }
+
+                throw SourceDecodeException();
+            }
+
+            break;
+        }
+    }
+    //
+    // void SourceDecoder::Impl::EnsureCluster(mkvparser::Cluster* cluster)
+    // {
+    //
+    // }
+
     SourceDecoder::Impl::~Impl() {
         delete segment;
         segment = nullptr;
+    }
+
+    bool SourceDecoder::Impl::IsValidCluster(const mkvparser::Cluster* cluster)
+    {
+        return cluster != nullptr && !cluster->EOS();
+    }
+
+    IAudioDecoder* SourceDecoder::Impl::GetAudioDecoder() const
+    {
+        return audioDecoder.get();
+    }
+
+    IVideoDecoder* SourceDecoder::Impl::GetVideoDecoder() const
+    {
+        return videoDecoder.get();
     }
 }

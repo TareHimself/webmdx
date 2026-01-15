@@ -67,32 +67,12 @@ namespace wdx {
 
     VpxDecoder::VpxDecoder(const VideoTrack &track) {
         _track = track;
-        vpx_codec_dec_cfg_t cfg = {};
-        cfg.h = _track.height;
-        cfg.w = _track.width;
-        cfg.threads = std::thread::hardware_concurrency();
-
-        switch (_track.codec) {
-            case VideoCodec::Vpx8: {
-                if (vpx_codec_dec_init(&_codec, vpx_codec_vp8_dx(), &cfg, 0)) {
-                    throw VideoDecoderError("Failed to create vpx8 decoder");
-                }
-            }
-                break;
-            case VideoCodec::Vpx9: {
-                if (vpx_codec_dec_init(&_codec, vpx_codec_vp9_dx(), &cfg, 0)) {
-                    throw VideoDecoderError("Failed to create vpx9 decoder");
-                }
-            }
-                break;
-            default:
-                throw VideoDecoderError("This decoder only supports vpx");
-                break;
-        }
+        Init();
     }
 
-    void VpxDecoder::Decode(const std::span<std::uint8_t> &input, double timestamp) {
-        if (const auto decodeResult = vpx_codec_decode(&_codec,input.data(),input.size(), nullptr, 0); decodeResult != VPX_CODEC_OK) {
+    void VpxDecoder::Decode(const std::shared_ptr<Packet>& input) {
+        const auto data = input->GetData();
+        if (const auto decodeResult = vpx_codec_decode(&_codec,data.data(),data.size(), nullptr, 0); decodeResult != VPX_CODEC_OK) {
             throw VideoDecoderError(std::string("Failed to decode vpx packet ") + vpx_codec_error(&_codec));
         }
     }
@@ -130,6 +110,37 @@ namespace wdx {
 
     VpxDecoder::~VpxDecoder() {
         vpx_codec_destroy(&_codec);
+    }
+
+    void VpxDecoder::Reset()
+    {
+        vpx_codec_destroy(&_codec);
+        Init();
+    }
+
+    void VpxDecoder::Init()
+    {
+        vpx_codec_dec_cfg_t cfg = {};
+        cfg.h = _track.height;
+        cfg.w = _track.width;
+        cfg.threads = std::thread::hardware_concurrency();
+        switch (_track.codec) {
+        case VideoCodec::Vpx8: {
+                if (vpx_codec_dec_init(&_codec, vpx_codec_vp8_dx(), &cfg, 0)) {
+                    throw VideoDecoderError("Failed to create vpx8 decoder");
+                }
+        }
+            break;
+        case VideoCodec::Vpx9: {
+                if (vpx_codec_dec_init(&_codec, vpx_codec_vp9_dx(), &cfg, 0)) {
+                    throw VideoDecoderError("Failed to create vpx9 decoder");
+                }
+        }
+            break;
+        default:
+            throw VideoDecoderError("This decoder only supports vpx");
+            break;
+        }
     }
 }
 #endif

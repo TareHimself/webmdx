@@ -7,23 +7,32 @@ class Webmdx(ConanFile):
     version = "1.0.0"
     url = "https://github.com/TareHimself/webmdx.git"
     license = "MIT"
-    requires = [
-        "dav1d/1.4.3",
-        "libvpx/1.14.1",
-        "libwebm/1.0.0.31",
-        "libyuv/1892",
-        "opus/1.5.2",
-    ]
+    requires = []
     git_tag = "main"
     settings = "os", "compiler", "build_type", "arch"
     exports_sources = "CMakeLists.txt", "lib/*", "include/*"
     options = {
             "shared": [True, False],
+            "tests": [True,False]
         }
     default_options = {
         "shared": True,
+        "tests": False,
+        "libcurl/*:with_ssl": "schannel",
     }
     
+    def requirements(self):
+        self.requires("dav1d/1.4.3")
+        self.requires("libvpx/1.14.1")
+        self.requires("libwebm/1.0.0.31")
+        self.requires("libyuv/1892")
+        self.requires("opus/1.5.2")
+
+        if self.options.tests:
+            self.requires("cpr/1.12.0")
+
+
+
     def config_options(self):
         pass
 
@@ -34,7 +43,8 @@ class Webmdx(ConanFile):
         deps = CMakeDeps(self)
         deps.generate()
         tc = CMakeToolchain(self)
-        #tc.variables["CMAKE_CXX_STANDARD"] = "20"
+        if self.options.tests:
+            tc.variables["WEBMDX_TESTS"] = "ON"
         tc.generate()
 
     def build(self):

@@ -9,9 +9,11 @@ namespace wdx {
     public:
         explicit OpusDecoder(const AudioTrack& track);
 
-        int Decode(const std::span<std::uint8_t> &input, std::vector<float> &pcm, double timestamp) override;
+        int Decode(const std::shared_ptr<Packet>& input, std::vector<float> &pcm) override;
 
         ~OpusDecoder() override;
+        void Reset() override;
+
     private:
         ::OpusDecoder * _decoder{};
         AudioTrack _track{};

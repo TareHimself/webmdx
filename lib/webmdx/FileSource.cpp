@@ -11,24 +11,25 @@ namespace wdx {
         _fileStream.close();
     }
 
-    void FileSource::Read(std::size_t pos, std::size_t size, unsigned char *data) {
+    void FileSource::Read(const std::int64_t& pos, std::span<std::uint8_t> data) {
         if (_pos != pos) {
             _fileStream.seekg(pos);
             _pos = pos;
         }
-        _fileStream.read(reinterpret_cast<char *>(data), size);
-        _pos += size;
+        _fileStream.read(reinterpret_cast<char *>(data.data()), static_cast<std::int64_t>(data.size()));
+        _pos += static_cast<std::int64_t>(data.size());
     }
 
-    std::size_t FileSource::GetLength() const {
+    std::int64_t FileSource::GetLength() const {
         return _fileSize;
     }
 
-    std::size_t FileSource::GetAvailable() const {
+    std::int64_t FileSource::GetAvailable() const {
         return _fileSize;
     }
 
-    bool FileSource::IsWriting() const {
-        return false;
+    void FileSource::MakeAvailable(const std::uint64_t& size)
+    {
+        // No need , whole file is already available
     }
 }

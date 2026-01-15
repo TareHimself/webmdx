@@ -6,8 +6,8 @@ tasks:
     build:
       - conan create . --build=missing -s build_type=Release -s compiler.cppstd=20
     build-debug:
-      - conan create . --build=missing -s build_type=Debug  -s compiler.cppstd=20
+      - conan create . --build=missing -s build_type=Debug  -s compiler.cppstd=20 
     setup:
       - conan install . --build=missing -s build_type=Release  -s compiler.cppstd=20
     setup-debug:
-      - conan install . --build=missing -s build_type=Debug  -s compiler.cppstd=20
+      - conan install . --build=missing -s build_type=Debug  -s compiler.cppstd=20 -o webmdx/*:tests=True

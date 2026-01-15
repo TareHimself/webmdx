@@ -2,7 +2,9 @@
 #include "VideoCodec.h"
 
 namespace wdx {
-    enum class DecodeResult {
+    enum class DemuxResult {
+        IncompleteHeader,
+        IncompleteCluster
         Success,
         Finished
     };

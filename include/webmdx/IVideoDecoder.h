@@ -2,6 +2,7 @@
 #include <span>
 #include <memory>
 #include "IDecodedVideoFrame.h"
+#include "Packet.h"
 #include "VideoTrack.h"
 
 namespace wdx {
@@ -14,10 +15,10 @@ namespace wdx {
         /**
          * Decodes a video packet
          * @param input
-         * @param timestamp
          */
-        virtual void Decode(const std::span<std::uint8_t>& input, double timestamp) = 0;
+        virtual void Decode(const std::shared_ptr<Packet>& input) = 0;
 
+        virtual void Reset() = 0;
         /**
          * Returns the decoded frame
          */

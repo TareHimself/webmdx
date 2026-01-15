@@ -21,13 +21,15 @@ namespace wdx {
     class Av1Decoder final : public IVideoDecoder {
     public:
         explicit Av1Decoder(const VideoTrack& track);
-        void Decode(const std::span<std::uint8_t> &input, double timestamp) override;
+        void Decode(const ::std::shared_ptr<Packet>& input) override;
 
         std::shared_ptr<IDecodedVideoFrame> GetFrame() override;
 
         ~Av1Decoder() override;
 
         void AdvanceToLatestPicture();
+        void Reset() override;
+
     private:
         VideoTrack _track{};
         Dav1dContext* _context{nullptr};

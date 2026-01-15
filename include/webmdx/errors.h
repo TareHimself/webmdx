@@ -6,6 +6,15 @@
 
 namespace wdx {
 
+
+    class SourceDecodeException : public std::exception{
+
+    };
+
+    class HeaderDecodeFailedException : public std::exception{
+
+    };
+
     class NoTracksAvailableException : public std::exception {
     };
 
@@ -13,31 +22,31 @@ namespace wdx {
 
     };
 
-    class UnknownCodecError : public std::exception{
+    class UnknownCodecException : public std::exception{
 
     };
 
-    class UnknownAudioCodecError : public UnknownCodecError{
+    class UnknownAudioCodecException : public UnknownCodecException{
 
     };
 
-    class UnknownVideoCodecError : public UnknownCodecError{
+    class UnknownVideoCodecException : public UnknownCodecException{
 
     };
 
-    class UnSupportedCodecError : public std::exception{
+    class UnSupportedCodecException : public std::exception{
 
     };
 
-    class UnSupportedAudioCodecError : public UnSupportedCodecError{
+    class UnSupportedAudioCodecException : public UnSupportedCodecException{
     public:
-        explicit  UnSupportedAudioCodecError(const AudioCodec& _codec) : codec(_codec) {};
+        explicit  UnSupportedAudioCodecException(const AudioCodec& _codec) : codec(_codec) {};
         AudioCodec codec;
     };
 
-    class UnSupportedVideoCodecError : public UnSupportedCodecError{
+    class UnSupportedVideoCodecException : public UnSupportedCodecException{
     public:
-        explicit  UnSupportedVideoCodecError(const VideoCodec& _codec) : codec(_codec) {};
+        explicit  UnSupportedVideoCodecException(const VideoCodec& _codec) : codec(_codec) {};
         VideoCodec codec;
     };
 

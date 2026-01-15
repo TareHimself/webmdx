@@ -4,9 +4,12 @@
 #include <span>
 
 #include "AudioTrack.h"
-#include "DecodeResult.h"
+#include "DemuxResult.h"
+#include "IAudioDecoder.h"
 #include "IDecodedVideoFrame.h"
 #include "ISource.h"
+#include "IVideoDecoder.h"
+#include "Packet.h"
 #include "VideoTrack.h"
 
 namespace wdx {
@@ -14,6 +17,9 @@ namespace wdx {
     public:
         using VideoCallback = std::function<void(double, const std::shared_ptr<IDecodedVideoFrame> &)>;
         using AudioCallback = std::function<void(double, const std::span<float> &)>;
+
+        using VideoPacketCallback = std::function<void(const std::shared_ptr<Packet> &, IVideoDecoder * decoder)>;
+        using AudioPacketCallback = std::function<void(const std::shared_ptr<Packet> &, IAudioDecoder * decoder)>;
         struct Impl;
 
         SourceDecoder();
@@ -22,7 +28,7 @@ namespace wdx {
 
         void SetSource(const std::shared_ptr<ISource> &source) const;
 
-        [[nodiscard]] DecodeResult Decode(double seconds) const;
+        [[nodiscard]] DemuxResult Demux(double seconds) const;
 
         void Seek(double seconds) const;
 
@@ -46,9 +52,13 @@ namespace wdx {
 
         [[nodiscard]] VideoTrack GetVideoTrack() const;
 
-        void SetVideoCallback(const VideoCallback &callback);
+        [[nodiscard]] IAudioDecoder * GetAudioDecoder() const;
 
-        void SetAudioCallback(const AudioCallback &callback);
+        [[nodiscard]] IVideoDecoder * GetVideoDecoder() const;
+
+        void SetAudioPacketCallback(const AudioPacketCallback &callback) const;
+
+        void SetVideoPacketCallback(const VideoPacketCallback &callback) const;
 
     private:
         Impl *_impl;

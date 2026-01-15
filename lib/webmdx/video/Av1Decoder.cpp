@@ -46,11 +46,12 @@ namespace wdx {
         }
     }
 
-    void Av1Decoder::Decode(const std::span<std::uint8_t> &input, double timestamp) {
+    void Av1Decoder::Decode(const std::shared_ptr<Packet>& input) {
+        auto inputData = input->GetData();
         dav1d_data_unref(&_data);
-        const auto data = new std::uint8_t[input.size()];
-        std::memcpy(data, input.data(), input.size());
-        if (dav1d_data_wrap(&_data,data,input.size(),freeCallback, nullptr) < 0) {
+        const auto data = new std::uint8_t[inputData.size()];
+        std::memcpy(data, inputData.data(), inputData.size());
+        if (dav1d_data_wrap(&_data,data,inputData.size(),freeCallback, nullptr) < 0) {
             delete[] data;
             throw AudioDecoderError("Failed to wrap AV1 data");
         }
@@ -104,6 +105,19 @@ namespace wdx {
         while (dav1d_get_picture(_context, &_latestPicture) == 0) {
             dav1d_picture_unref(&previousPicture);
             previousPicture = _latestPicture;
+        }
+    }
+
+    void Av1Decoder::Reset()
+    {
+        AdvanceToLatestPicture();
+        dav1d_picture_unref(&_latestPicture);
+        dav1d_data_unref(&_data);
+        dav1d_close(&_context);
+
+        dav1d_default_settings(&_initSettings);
+        if (const auto result = dav1d_open(&_context,&_initSettings); result < 0) {
+            throw AudioDecoderError(std::string("Failed to create Av1 decoder: "));
         }
     }
 }

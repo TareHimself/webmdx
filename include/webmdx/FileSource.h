@@ -10,18 +10,17 @@ namespace wdx {
 
         ~FileSource() override;
 
-        void Read(std::size_t pos, std::size_t size, unsigned char *data) override;
+        void Read(const std::int64_t& pos, std::span<std::uint8_t> data) override;
 
-        [[nodiscard]] std::size_t GetLength() const override;
+        [[nodiscard]] std::int64_t GetLength() const override;
 
-        [[nodiscard]] std::size_t GetAvailable() const override;
-
-        [[nodiscard]] bool IsWriting() const override;
+        [[nodiscard]] std::int64_t GetAvailable() const override;
+        void MakeAvailable(const std::uint64_t& size) override;
 
     private:
         std::filesystem::path _path;
-        size_t _fileSize;
+        std::int64_t _fileSize;
         std::ifstream _fileStream;
-        size_t _pos;
+        std::int64_t _pos;
     };
 }

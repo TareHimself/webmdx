@@ -23,11 +23,13 @@ namespace wdx {
     class VpxDecoder final : public IVideoDecoder {
     public:
         explicit VpxDecoder(const VideoTrack& track);
-        void Decode(const std::span<std::uint8_t> &input, double timestamp) override;
         std::shared_ptr<IDecodedVideoFrame> GetFrame() override;
 
         ~VpxDecoder() override;
+        void Decode(const std::shared_ptr<Packet>& input) override;
+        void Reset() override;
     private:
+        void Init();
         VideoTrack _track{};
         vpx_codec_ctx_t _codec{};
     };

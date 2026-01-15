@@ -24,16 +24,16 @@ namespace wdx {
         const mkvparser::Cluster *cluster{};
         TrackPosition audioPosition{};
         TrackPosition videoPosition{};
-        long long lastDecodedAudioPos = -1;
-        long long lastDecodedVideoPos = -1;
+        long long lastAudioPacketPos = -1;
+        long long lastVideoPacketPos = -1;
 
         std::shared_ptr<IAudioDecoder> audioDecoder{};
         std::shared_ptr<IVideoDecoder> videoDecoder{};
 
-        std::optional<VideoCallback> _videoCallback{};
-        std::optional<AudioCallback> _audioCallback{};
+        std::optional<VideoPacketCallback> _videoPacketCallback{};
+        std::optional<AudioPacketCallback> _audioPacketCallback{};
 
-        std::vector<uint8_t> tempBuffer{};
+        std::vector<std::uint8_t> tempBuffer{};
 
         void SetSource(const std::shared_ptr<ISource>& source);
 
@@ -46,13 +46,13 @@ namespace wdx {
          */
         bool FindBestCluster(double timestamp,const mkvparser::Cluster* start,const mkvparser::Cluster*& best) const;
 
-        DecodeResult Decode(double seconds);
+        DemuxResult Decode(double seconds);
 
         void Seek(double timestamp);
 
-        void DecodeVideo(const TrackPosition &start, const TrackPosition &end, bool decodeOnly = false);
+        void OutputVideoPackets(const TrackPosition &start, const TrackPosition &end);
 
-        void DecodeAudio(const TrackPosition &start, const TrackPosition &end, bool decodeOnly = false);
+        void OutputAudioPackets(const TrackPosition &start, const TrackPosition &end);
 
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 
@@ -61,6 +61,19 @@ namespace wdx {
         bool FindBlockOfType(const mkvparser::BlockEntry *&start, TrackType type, double time, int trackIndex);
 
         static const mkvparser::BlockEntry * FindRecentKeyBlock(double timestamp,const mkvparser::BlockEntry* initialEntry,const mkvparser::BlockEntry* targetBlockEntry);
+
+        void EnsureSegmentHeader(mkvparser::Segment* segment);
+
+        void EnsureSegment(mkvparser::Segment* segment);
+
+        //void EnsureCluster(mkvparser::Cluster* cluster);
+
         ~Impl();
+
+        static bool IsValidCluster(const mkvparser::Cluster* cluster);
+
+        [[nodiscard]] IAudioDecoder * GetAudioDecoder() const;
+
+        [[nodiscard]] IVideoDecoder * GetVideoDecoder() const;
     };
 }
