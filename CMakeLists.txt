@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+include(FetchContent REQUIRED)
 
 project(webmdx LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of webm files")
 
 option(WEBM_DX_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
-file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp" "${CMAKE_CURRENT_LIST_DIR}/lib/*.h")
+file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp" "${CMAKE_CURRENT_LIST_DIR}/lib/*.h" "${CMAKE_CURRENT_LIST_DIR}/include/*.h")
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -16,9 +17,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 #find_package(PkgConfig REQUIRED)
 find_package(webm REQUIRED)
 find_package(libyuv REQUIRED)
+find_package(matroska REQUIRED)
 
-
-target_link_libraries(${PROJECT_NAME} webm::webm libyuv::libyuv)
+target_link_libraries(${PROJECT_NAME} webm::webm libyuv::libyuv matroska::matroska)
 message(STATUS "FLAGS ")
 #pkg_check_modules(VPX vpx)
 find_package(libvpx)

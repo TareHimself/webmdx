@@ -12,7 +12,7 @@ class Webmdx(ConanFile):
         "libvpx/1.14.1",
         "libwebm/1.0.0.31",
         "libyuv/1892",
-        "opus/1.5.2",
+        "opus/1.5.2"
     ]
     git_tag = "main"
     settings = "os", "compiler", "build_type", "arch"
@@ -26,6 +26,9 @@ class Webmdx(ConanFile):
     
     def config_options(self):
         pass
+
+    def requirements(self):
+        self.requires("matroska/73e1d071e6677c22a0b62cfe69c7d6cd003829a2")
 
     def layout(self):
         cmake_layout(self)

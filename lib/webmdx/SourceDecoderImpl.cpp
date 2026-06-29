@@ -6,7 +6,7 @@
 #include "BlockEntries.h"
 #include "webmdx/errors.h"
 #include "webmdx/utils.h"
-
+#include "matroska/KaxSegment.h"
 namespace wdx {
     void SourceDecoder::Impl::SetSource(const std::shared_ptr<ISource> &source) {
         if (segment != nullptr) {
@@ -20,6 +20,7 @@ namespace wdx {
             delete segment;
         }
 
+        libmatroska::KaxSegment
         reader = SourceReader(source);
         mkvparser::EBMLHeader header;
         header.Parse(&reader, byteDecodePosition);
