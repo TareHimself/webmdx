@@ -3,6 +3,10 @@
 version: '3'
 
 tasks:
+    create: 
+      - conan create . --build=missing -s build_type=Release
+    create-debug: 
+      - conan create . --build=missing -s build_type=Debug
     build:
       - conan create . --build=missing -s build_type=Release -s compiler.cppstd=20
     build-debug:

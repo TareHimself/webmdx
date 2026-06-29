@@ -4,7 +4,7 @@
 namespace wdx {
     enum class DemuxResult {
         IncompleteHeader,
-        IncompleteCluster
+        IncompleteCluster,
         Success,
         Finished
     };
