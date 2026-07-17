@@ -1,4 +1,5 @@
 #include "webmdx/SourceDecoder.h"
+#include <algorithm>
 #include <filesystem>
 #include "SourceDecoderImpl.h"
 
@@ -25,7 +26,7 @@ namespace wdx {
     }
 
     double SourceDecoder::GetDuration() const {
-        return _impl->duration;
+        return std::max(0.0, _impl->duration);
     }
 
     double SourceDecoder::GetPosition() const {

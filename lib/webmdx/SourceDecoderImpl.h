@@ -9,6 +9,17 @@
 
 namespace wdx {
     struct SourceDecoder::Impl {
+        enum class ParseState {
+            NeedsEBML,
+            NeedsSegment,
+            NeedsHeader,
+            NeedsCluster,
+            Ready
+        };
+
+        // Tristate return for FindBestCluster to distinguish streaming gaps from true end-of-stream.
+        enum class ClusterResult { Found, IsLast, NeedMoreData };
+
         SourceReader reader{};
         long long byteDecodePosition = 0;
         mkvparser::Segment *segment{};
@@ -26,6 +37,7 @@ namespace wdx {
         TrackPosition videoPosition{};
         long long lastAudioPacketPos = -1;
         long long lastVideoPacketPos = -1;
+        ParseState parseState{ParseState::NeedsEBML};
 
         std::shared_ptr<IAudioDecoder> audioDecoder{};
         std::shared_ptr<IVideoDecoder> videoDecoder{};
@@ -37,14 +49,17 @@ namespace wdx {
 
         void SetSource(const std::shared_ptr<ISource>& source);
 
+        // Advances parseState toward Ready without blocking. Returns true when Ready.
+        bool TryInit();
+
+        // Extracts track info, duration, cues from already-parsed segment headers.
+        void SetupFromSegmentHeaders();
+
         void InitVideoDecoder();
 
         void InitAudioDecoder();
 
-        /**
-         * Finds the best cluster after the current one for the provided timestamp
-         */
-        bool FindBestCluster(double timestamp,const mkvparser::Cluster* start,const mkvparser::Cluster*& best) const;
+        ClusterResult FindBestCluster(double timestamp, const mkvparser::Cluster* start, const mkvparser::Cluster*& best) const;
 
         DemuxResult Decode(double seconds);
 
@@ -60,13 +75,7 @@ namespace wdx {
 
         bool FindBlockOfType(const mkvparser::BlockEntry *&start, TrackType type, double time, int trackIndex);
 
-        static const mkvparser::BlockEntry * FindRecentKeyBlock(double timestamp,const mkvparser::BlockEntry* initialEntry,const mkvparser::BlockEntry* targetBlockEntry);
-
-        void EnsureSegmentHeader(mkvparser::Segment* segment);
-
-        void EnsureSegment(mkvparser::Segment* segment);
-
-        //void EnsureCluster(mkvparser::Cluster* cluster);
+        static const mkvparser::BlockEntry * FindRecentKeyBlock(double timestamp, const mkvparser::BlockEntry* initialEntry, const mkvparser::BlockEntry* targetBlockEntry);
 
         ~Impl();
 
