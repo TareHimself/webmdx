@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.library }} library
+    # silo gets libvpx and dav1d from Conan, which it can only describe MSVC to so far
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        library: [shared, static]
+    defaults:
+      run:
+        shell: bash
+    env:
+      SHARED: ${{ matrix.library == 'shared' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install silo
+        run: uv tool install "git+https://github.com/TareHimself/silo#subdirectory=client"
+
+      - name: Keep silo's files outside the checkout
+        run: echo "SILO_HOME=$RUNNER_TEMP/silo" >> "$GITHUB_ENV"
+
+      - name: Restore built dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SILO_HOME }}/store
+          key: silo-store-${{ runner.os }}-${{ hashFiles('silopkg.py', 'silo.config.toml', 'test/**/silopkg.py') }}
+          restore-keys: silo-store-${{ runner.os }}-
+
+      - name: Detect the compiler
+        run: silo profile detect
+
+      - name: Build the library
+        run: silo build . -o shared=$SHARED --report "$RUNNER_TEMP/reports/library"
+
+      - name: Build the test project's dependencies
+        working-directory: test
+        run: silo sync . --release -o webmdx:shared=$SHARED
+
+      - name: Configure the test project
+        working-directory: test
+        run: silo run -o webmdx:shared=$SHARED -- cmake --preset webmdx-test-release
+
+      - name: Build the test project
+        working-directory: test
+        run: silo run -o webmdx:shared=$SHARED -- cmake --build --preset webmdx-test-release
+
+      - name: Run the tests
+        working-directory: test
+        run: silo run -o webmdx:shared=$SHARED -- ctest --test-dir build/release --output-on-failure
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: silo-logs-${{ matrix.library }}
+          path: ${{ runner.temp }}/reports
