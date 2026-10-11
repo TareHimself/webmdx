@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <optional>
 #include "SourceReader.h"
 #include "TrackPosition.h"
@@ -22,7 +23,7 @@ namespace wdx {
 
         SourceReader reader{};
         long long byteDecodePosition = 0;
-        mkvparser::Segment *segment{};
+        std::unique_ptr<mkvparser::Segment> segment{};
         double duration{};
         double decodedPosition{};
         long long timecodeScale = 0;

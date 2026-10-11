@@ -17,8 +17,7 @@ namespace wdx {
             decodedPosition = 0;
             duration = 0;
             byteDecodePosition = 0;
-            delete segment;
-            segment = nullptr;
+            segment.reset();
         }
 
         cluster = nullptr;
@@ -43,10 +42,12 @@ namespace wdx {
         }
 
         if (parseState == ParseState::NeedsSegment) {
-            if (segment) { delete segment; segment = nullptr; }
-            const std::int64_t ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, segment);
+            segment.reset();
+            mkvparser::Segment* rawSegment = nullptr;
+            const std::int64_t ret = mkvparser::Segment::CreateInstance(&reader, byteDecodePosition, rawSegment);
+            segment.reset(rawSegment);
             if (ret != 0) {
-                if (segment) { delete segment; segment = nullptr; }
+                segment.reset();
                 return false;
             }
             parseState = ParseState::NeedsHeader;
@@ -541,10 +542,7 @@ namespace wdx {
         return result;
     }
 
-    SourceDecoder::Impl::~Impl() {
-        delete segment;
-        segment = nullptr;
-    }
+    SourceDecoder::Impl::~Impl() = default;
 
     bool SourceDecoder::Impl::IsValidCluster(const mkvparser::Cluster* cluster)
     {

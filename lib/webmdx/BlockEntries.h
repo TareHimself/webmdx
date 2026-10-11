@@ -25,13 +25,9 @@ namespace wdx {
             }
 
             friend bool operator==(const Iterator &a, const Iterator &b) {
-                auto aTime = nanoSecsToSecs(a._current->GetBlock()->GetTime(a._current->GetCluster()));
-                auto bTime = nanoSecsToSecs(b._current->GetBlock()->GetTime(b._current->GetCluster()));
                 return a._current == b._current;
             };
             friend bool operator!=(const Iterator &a, const Iterator &b) {
-                auto aTime = nanoSecsToSecs(a._current->GetBlock()->GetTime(a._current->GetCluster()));
-                auto bTime = nanoSecsToSecs(b._current->GetBlock()->GetTime(b._current->GetCluster()));
                 return a._current != b._current;
             };
             bool completed{false};
