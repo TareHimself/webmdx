@@ -20,7 +20,9 @@ namespace wdx {
 
         virtual void Reset() = 0;
         /**
-         * Returns the decoded frame
+         * Returns the next decoded frame produced so far, or nullptr if none is ready.
+         * A single Decode() call can yield zero, one, or multiple frames (lookahead/reordering),
+         * so callers must call this in a loop after each Decode() until it returns nullptr.
          */
         virtual std::shared_ptr<IDecodedVideoFrame> GetFrame() = 0;
 

@@ -1,70 +1,11 @@
 #ifdef WEBM_DX_CODEC_VIDEO_VPX
 #include "VpxDecoder.h"
-#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <thread>
 #include "webmdx/errors.h"
-#include <libyuv.h>
 
 namespace wdx {
-    void VpxFrame::ToRgba(const std::span<std::uint8_t> &frame) {
-
-        if (alphaPlane.empty()) {
-            alphaStride = yStride;
-            alphaPlane = std::vector<uint8_t>(yPlane.size(), 255);
-        }
-        libyuv::I420AlphaToABGR(
-        yPlane.data(),
-       yStride,
-       uPlane.data(),
-       uStride,
-       vPlane.data(),
-       vStride,
-       alphaPlane.data(),
-       alphaStride,
-       frame.data(),
-       static_cast<int>(width) * 4,
-       static_cast<int>(width),
-       static_cast<int>(height),
-       0
-       );
-        return;
-        libyuv::I420ToRAW(
-            yPlane.data(),
-            yStride,
-            uPlane.data(),
-            uStride,
-            vPlane.data(),
-            vStride,
-            frame.data(),
-            static_cast<int>(width) * 4,
-            static_cast<int>(width),
-            static_cast<int>(height));
-        // for (int y = 0; y < height; ++y) {
-        //     for (int x = 0; x < width; ++x) {
-        //         const int y_val = yPlane[y * yStride + x];
-        //         const int u_val = uPlane[(y / 2) * uStride + (x / 2)];
-        //         const int v_val = vPlane[(y / 2) * vStride + (x / 2)];
-        //
-        //         // Convert YUV to RGB
-        //         const int c = y_val - 16;
-        //         const int d = u_val - 128;
-        //         const int e = v_val - 128;
-        //
-        //         int r = (298 * c + 409 * e + 128) >> 8;
-        //         int g = (298 * c - 100 * d - 208 * e + 128) >> 8;
-        //         int b = (298 * c + 516 * d + 128) >> 8;
-        //
-        //         const int index = (y * width + x) * 4;
-        //         frame[index + 0] = std::clamp(r, 0, 255); // R
-        //         frame[index + 1] = std::clamp(g, 0, 255); // G
-        //         frame[index + 2] = std::clamp(b, 0, 255); // B
-        //         frame[index + 3] = 255; // A
-        //     }
-        // }
-    }
-
     VpxDecoder::VpxDecoder(const VideoTrack &track) {
         _track = track;
         Init();
@@ -75,15 +16,20 @@ namespace wdx {
         if (const auto decodeResult = vpx_codec_decode(&_codec,data.data(),data.size(), nullptr, 0); decodeResult != VPX_CODEC_OK) {
             throw VideoDecoderError(std::string("Failed to decode vpx packet ") + vpx_codec_error(&_codec));
         }
+        // A fresh iterator starts a new pull over the frames this Decode() made available;
+        // vpx_codec_decode can surface more than one frame per call (e.g. VP9 superframes).
+        _iter = nullptr;
     }
 
     std::shared_ptr<IDecodedVideoFrame> VpxDecoder::GetFrame() {
-        vpx_codec_iter_t iter = nullptr;
-        const vpx_image_t *frame = vpx_codec_get_frame(&_codec, &iter);
+        const vpx_image_t *frame = vpx_codec_get_frame(&_codec, &_iter);
+        if (frame == nullptr) {
+            return nullptr;
+        }
 
-        auto result = std::make_shared<VpxFrame>();
-        result->width = frame->d_w;
-        result->height = frame->d_h;
+        auto result = std::make_shared<I420Frame>();
+        result->width = static_cast<int>(frame->d_w);
+        result->height = static_cast<int>(frame->d_h);
         result->yStride = frame->stride[VPX_PLANE_Y];
         result->uStride = frame->stride[VPX_PLANE_U];
         result->vStride = frame->stride[VPX_PLANE_V];
@@ -120,6 +66,7 @@ namespace wdx {
 
     void VpxDecoder::Init()
     {
+        _iter = nullptr;
         vpx_codec_dec_cfg_t cfg = {};
         cfg.h = _track.height;
         cfg.w = _track.width;
