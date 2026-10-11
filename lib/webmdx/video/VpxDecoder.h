@@ -15,6 +15,7 @@ namespace wdx {
         ~VpxDecoder() override;
         void Decode(const std::shared_ptr<Packet>& input) override;
         void Reset() override;
+        void Flush() override;
     private:
         void Init();
         VideoTrack _track{};

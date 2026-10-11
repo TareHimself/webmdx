@@ -64,6 +64,14 @@ namespace wdx {
         Init();
     }
 
+    void VpxDecoder::Flush()
+    {
+        if (const auto flushResult = vpx_codec_decode(&_codec, nullptr, 0, nullptr, 0); flushResult != VPX_CODEC_OK) {
+            throw VideoDecoderError(std::string("Failed to flush vpx decoder ") + vpx_codec_error(&_codec));
+        }
+        _iter = nullptr;
+    }
+
     void VpxDecoder::Init()
     {
         _iter = nullptr;

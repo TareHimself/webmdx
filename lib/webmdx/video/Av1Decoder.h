@@ -15,6 +15,7 @@ namespace wdx {
         ~Av1Decoder() override;
 
         void Reset() override;
+        void Flush() override;
 
     private:
         // Pulls every picture dav1d currently has ready into _pendingPictures.

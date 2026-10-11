@@ -339,7 +339,11 @@ namespace wdx {
             OutputRemainingPackets(audioPosition, TrackType::Audio, selectedAudioTrackIndex, timeLimit);
         }
         if (videoDecoder && !videoTracks.empty()) {
+            const auto flushDecoder = !videoPosition.exhausted;
             OutputRemainingPackets(videoPosition, TrackType::Video, selectedVideoTrackIndex, timeLimit);
+            if (flushDecoder) {
+                videoDecoder->Flush();
+            }
         }
         return DemuxResult::Finished;
     }

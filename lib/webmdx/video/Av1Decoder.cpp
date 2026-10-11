@@ -92,6 +92,13 @@ namespace wdx {
         }
     }
 
+    void Av1Decoder::Flush()
+    {
+        // dav1d only gives up its delayed pictures on a dav1d_get_picture that follows one with no new data
+        DrainPictures();
+        DrainPictures();
+    }
+
     void Av1Decoder::Reset()
     {
         DrainPictures();
