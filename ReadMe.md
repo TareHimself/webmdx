@@ -18,6 +18,18 @@ silo run -- cmake --build --preset webmdx-debug
 
 The recipes for its dependencies come from the registry named in `silo.config.toml`.
 
+### options
+
+Pass these with `-o`, for example `silo build -o shared=false -o with_av1=false`. One video codec and one audio codec have to stay on.
+
+| Option | Default | Does |
+|---|---|---|
+| `shared` | `true` | Build a shared library. `false` builds a static one |
+| `with_vpx` | `true` | VP8 and VP9 video, through libvpx |
+| `with_av1` | `true` | AV1 video, through dav1d |
+| `with_opus` | `true` | Opus audio, through libopus |
+| `with_vorbis` | `true` | Vorbis audio, through libvorbis |
+
 ## tests
 
 `test/` is its own silo project that links the packaged library and decodes a set of sample files.

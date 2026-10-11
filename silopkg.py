@@ -1,11 +1,38 @@
-from silo import Component, Options, Package, SiloPackage
+from typing import NamedTuple
+
+from silo import Component, InvalidConfiguration, Options, Package, SiloPackage
 from silo.tools.cmake import CMakeBuild, CMakeDeps, CMakeGenerator, CMakePresets
 
-CODECS = {"libvpx": "1.14.1", "dav1d": "1.4.3", "opus": "1.5.2", "vorbis": "1.3.7"}
+
+class Codec(NamedTuple):
+    package: str
+    version: str
+    # The target CMakeLists.txt links, when it is not the one silo names
+    cmake_target: str | None = None
+
+
+# Keyed by the option that turns each one on
+VIDEO_CODECS = {
+    "with_vpx": Codec("libvpx", "1.14.1"),
+    "with_av1": Codec("dav1d", "1.4.3"),
+}
+AUDIO_CODECS = {
+    "with_opus": Codec("opus", "1.5.2", "Opus::opus"),
+    "with_vorbis": Codec("vorbis", "1.3.7", "Vorbis::vorbis"),
+}
+CODECS = VIDEO_CODECS | AUDIO_CODECS
 
 
 class WebmdxOptions(Options):
     shared: bool = True
+    # VP8 and VP9 video, through libvpx
+    with_vpx: bool = True
+    # AV1 video, through dav1d
+    with_av1: bool = True
+    # Opus audio, through libopus
+    with_opus: bool = True
+    # Vorbis audio, through libvorbis
+    with_vorbis: bool = True
 
 
 class Webmdx(SiloPackage[WebmdxOptions]):
@@ -13,22 +40,32 @@ class Webmdx(SiloPackage[WebmdxOptions]):
     version = "1.0.0"
     supports_shared = True
 
+    def codecs(self):
+        return [codec for option, codec in CODECS.items() if getattr(self.options, option)]
+
     def source(self, src):
         src.local(".")
 
     def deps(self):
         self.dep("libwebm@1.0.0.31")
         self.dep("libyuv@1974")
-        for codec, version in CODECS.items():
-            self.dep(f"{codec}@{version}")
+        for codec in self.codecs():
+            self.dep(f"{codec.package}@{codec.version}")
         self.tool("cmake@4.3")
         self.tool("ninja@1.13")
+
+    def validate(self):
+        for kind, codecs in (("video", VIDEO_CODECS), ("audio", AUDIO_CODECS)):
+            if not any(getattr(self.options, option) for option in codecs):
+                names = " or ".join(codecs)
+                raise InvalidConfiguration(f"webmdx needs one {kind} codec: {names}")
 
     def generate(self):
         deps = CMakeDeps(self)
         deps.alias("webm::webm", "libwebm::webm")
-        deps.alias("Opus::opus", "opus::opus")
-        deps.alias("Vorbis::vorbis", "vorbis::vorbis")
+        for codec in self.codecs():
+            if codec.cmake_target:
+                deps.alias(codec.cmake_target, f"{codec.package}::{codec.package}")
         deps.generate()
         toolchain = CMakeGenerator(self)
         toolchain.add_cache_bool("BUILD_SHARED_LIBS", self.options.shared)
@@ -53,5 +90,6 @@ class Webmdx(SiloPackage[WebmdxOptions]):
         else:
             library.static_libs.append("webmdx")
             library.defines.append("WEBMDX_STATIC")
-            library.requires += ["libwebm::webm", "libyuv", *CODECS]
+            library.requires += ["libwebm::webm", "libyuv"]
+            library.requires += [codec.package for codec in self.codecs()]
         return Package(components=[library], licenses=["LICENSE"])
