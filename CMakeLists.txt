@@ -3,7 +3,6 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 project(webmdx LANGUAGES C CXX VERSION 1.0.0 DESCRIPTION "C++ library for decoding of webm files")
 
-option(WEBM_DX_BUILD_TEST_MAIN "Build a test main file for debugging" OFF)
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp" "${CMAKE_CURRENT_LIST_DIR}/lib/*.h")
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES})
@@ -62,20 +61,6 @@ if(WEBMDX_LIBRARY_TYPE STREQUAL "SHARED_LIBRARY")
     target_compile_definitions(${PROJECT_NAME} PRIVATE WEBM_DX_PRODUCER)
 else()
     target_compile_definitions(${PROJECT_NAME} PUBLIC WEBMDX_STATIC)
-endif()
-
-if(WEBMDX_TESTS)
-    message(STATUS "Setting up test executable")
-    set(STB_IMAGE_WRITE_DIR ${CMAKE_CURRENT_BINARY_DIR}/stb)
-    set(STB_IMAGE_WRITE_FILE ${STB_IMAGE_WRITE_DIR}/stb_image_write.h)
-    if(NOT EXISTS ${STB_IMAGE_WRITE_FILE})
-        file(MAKE_DIRECTORY ${STB_IMAGE_WRITE_DIR})
-        file(DOWNLOAD  "https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image_write.h" ${STB_IMAGE_WRITE_FILE} SHOW_PROGRESS)
-    endif()
-    find_package(cpr REQUIRED)
-    add_executable(test ${CMAKE_CURRENT_LIST_DIR}/test/main.cpp ${CMAKE_CURRENT_LIST_DIR}/test/NetworkSource.cpp)
-    target_link_libraries(test ${PROJECT_NAME} cpr::cpr)
-    target_include_directories(test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src ${STB_IMAGE_WRITE_DIR})
 endif()
 
 include(GNUInstallDirs)

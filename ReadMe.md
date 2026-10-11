@@ -18,6 +18,18 @@ silo run -- cmake --build --preset webmdx-debug
 
 The recipes for its dependencies come from the registry named in `silo.config.toml`.
 
+## tests
+
+`test/` is its own silo project that links the packaged library and decodes a set of sample files.
+
+```
+cd test
+silo sync . --release
+silo run -- cmake --preset webmdx-test-release
+silo run -- cmake --build --preset webmdx-test-release
+silo run -- ctest --test-dir build/release --output-on-failure
+```
+
 ## issues
 - naive seeking
 - unreliable versioning

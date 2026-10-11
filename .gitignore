@@ -3,3 +3,4 @@ cmake-build*
 CmakeUserPresets.json
 vcpkg_installed
 /build
+/test/build
