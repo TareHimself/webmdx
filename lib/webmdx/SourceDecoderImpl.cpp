@@ -1,6 +1,7 @@
 #include "SourceDecoderImpl.h"
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <span>
 #include <thread>
 #include "BlockEntries.h"
@@ -246,15 +247,19 @@ namespace wdx {
             }
         }
 
-        if (duration > 0 && decodedPosition >= duration) {
-            return DemuxResult::Finished;
-        }
-
         const auto hasAudio = audioDecoder && !audioTracks.empty();
         const auto hasVideo = videoDecoder && !videoTracks.empty();
 
         if (!hasAudio && !hasVideo) {
             throw NoTracksAvailableException();
+        }
+
+        if ((!hasAudio || audioPosition.exhausted) && (!hasVideo || videoPosition.exhausted)) {
+            return DemuxResult::Finished;
+        }
+
+        if (duration > 0 && decodedPosition >= duration) {
+            return Finish(false);
         }
 
         // Compute target position but don't commit it until we confirm data is available.
@@ -276,7 +281,7 @@ namespace wdx {
         // Early exit: we know we're past the end already.
         if (isLastCluster && duration > 0 && targetPosition >= duration) {
             decodedPosition = targetPosition;
-            return DemuxResult::Finished;
+            return Finish(true);
         }
 
         decltype(TrackPosition::entry) initialAudio = audioPosition.entry;
@@ -317,14 +322,61 @@ namespace wdx {
         // IsLast means no more clusters exist (truly end of stream for streaming sources,
         // or end of file for file sources).
         if (isLastCluster && (duration <= 0 || decodedPosition >= duration)) {
-            return DemuxResult::Finished;
+            return Finish(true);
         }
 
         if (duration > 0 && decodedPosition >= duration) {
-            return DemuxResult::Finished;
+            return Finish(false);
         }
 
         return DemuxResult::Success;
+    }
+
+    DemuxResult SourceDecoder::Impl::Finish(const bool reachedLastCluster) {
+        // Decode outputs up to, not including, each track's position, so the packets from there on are still owed.
+        const auto timeLimit = reachedLastCluster ? std::numeric_limits<double>::infinity() : duration;
+        if (audioDecoder && !audioTracks.empty()) {
+            OutputRemainingPackets(audioPosition, TrackType::Audio, selectedAudioTrackIndex, timeLimit);
+        }
+        if (videoDecoder && !videoTracks.empty()) {
+            OutputRemainingPackets(videoPosition, TrackType::Video, selectedVideoTrackIndex, timeLimit);
+        }
+        return DemuxResult::Finished;
+    }
+
+    void SourceDecoder::Impl::OutputRemainingPackets(TrackPosition &position, const TrackType type, const int trackIndex, const double timeLimit) {
+        if (position.exhausted) {
+            return;
+        }
+        position.exhausted = true;
+
+        auto entry = position.entry;
+        while (entry != nullptr && !entry->EOS()) {
+            auto entryCluster = entry->GetCluster();
+            const auto block = entry->GetBlock();
+            const auto trackNumber = static_cast<int>(block->GetTrackNumber());
+            if (trackNumbersToTrackTypes[trackNumber] == type && trackNumbersToTrackIndexes[trackNumber] == trackIndex) {
+                if (nanoSecsToSecs(block->GetTime(entryCluster)) > timeLimit) {
+                    return;
+                }
+                if (type == TrackType::Video) {
+                    OutputVideoBlock(entry);
+                } else {
+                    OutputAudioBlock(entry);
+                }
+            }
+
+            const mkvparser::BlockEntry *next = nullptr;
+            entryCluster->GetNext(entry, next);
+            if (next == nullptr || next->EOS()) {
+                entryCluster = segment->GetNext(entryCluster);
+                if (!IsValidCluster(entryCluster)) {
+                    return;
+                }
+                entryCluster->GetFirst(next);
+            }
+            entry = next;
+        }
     }
 
     void SourceDecoder::Impl::Seek(double timestamp) {
@@ -387,57 +439,63 @@ namespace wdx {
     void SourceDecoder::Impl::OutputVideoPackets(const TrackPosition &start, const TrackPosition &end) {
         BlockEntries entries{start, end};
         for (const auto entry : entries) {
-            const auto block = entry->GetBlock();
-            const auto frameCount = block->GetFrameCount();
-            const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
-            const auto isKeyBlock = block->IsKey();
-            for (auto i = 0; i < frameCount; i++) {
-                auto frame = block->GetFrame(i);
+            OutputVideoBlock(entry);
+        }
+    }
 
-                if (frame.pos == lastVideoPacketPos) {
-                    continue;
-                }
-                if (tempBuffer.size() < frame.len) {
-                    tempBuffer.resize(frame.len);
-                }
-                frame.Read(&reader, tempBuffer.data());
-                if (_videoPacketCallback.has_value())
-                {
-                    auto packet = std::make_shared<Packet>(time, std::span(tempBuffer.data(), frame.len), isKeyBlock && i == 0);
-                    (*_videoPacketCallback)(packet, videoDecoder.get());
-                }
+    void SourceDecoder::Impl::OutputVideoBlock(const mkvparser::BlockEntry *entry) {
+        const auto block = entry->GetBlock();
+        const auto frameCount = block->GetFrameCount();
+        const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
+        const auto isKeyBlock = block->IsKey();
+        for (auto i = 0; i < frameCount; i++) {
+            auto frame = block->GetFrame(i);
 
-                lastVideoPacketPos = frame.pos;
+            if (frame.pos == lastVideoPacketPos) {
+                continue;
             }
+            if (tempBuffer.size() < frame.len) {
+                tempBuffer.resize(frame.len);
+            }
+            frame.Read(&reader, tempBuffer.data());
+            if (_videoPacketCallback.has_value())
+            {
+                auto packet = std::make_shared<Packet>(time, std::span(tempBuffer.data(), frame.len), isKeyBlock && i == 0);
+                (*_videoPacketCallback)(packet, videoDecoder.get());
+            }
+
+            lastVideoPacketPos = frame.pos;
         }
     }
 
     void SourceDecoder::Impl::OutputAudioPackets(const TrackPosition &start, const TrackPosition &end) {
         const BlockEntries entries{start, end};
-
-        std::vector<float> samples{};
         for (const auto entry : entries) {
-            const auto block = entry->GetBlock();
-            const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
-            const auto frameCount = block->GetFrameCount();
-            const auto isKeyBlock = block->IsKey();
-            for (auto i = 0; i < frameCount; i++) {
-                const auto frame = block->GetFrame(i);
-                if (frame.pos == lastAudioPacketPos) {
-                    continue;
-                }
-                if (tempBuffer.size() < frame.len) {
-                    tempBuffer.resize(frame.len);
-                }
-                frame.Read(&reader, tempBuffer.data());
-                if (_audioPacketCallback.has_value())
-                {
-                    auto packet = std::make_shared<Packet>(time, std::span(tempBuffer.data(), frame.len), isKeyBlock && i == 0);
-                    (*_audioPacketCallback)(packet, audioDecoder.get());
-                }
+            OutputAudioBlock(entry);
+        }
+    }
 
-                lastAudioPacketPos = frame.pos;
+    void SourceDecoder::Impl::OutputAudioBlock(const mkvparser::BlockEntry *entry) {
+        const auto block = entry->GetBlock();
+        const auto time = nanoSecsToSecs(block->GetTime(entry->GetCluster()));
+        const auto frameCount = block->GetFrameCount();
+        const auto isKeyBlock = block->IsKey();
+        for (auto i = 0; i < frameCount; i++) {
+            const auto frame = block->GetFrame(i);
+            if (frame.pos == lastAudioPacketPos) {
+                continue;
             }
+            if (tempBuffer.size() < frame.len) {
+                tempBuffer.resize(frame.len);
+            }
+            frame.Read(&reader, tempBuffer.data());
+            if (_audioPacketCallback.has_value())
+            {
+                auto packet = std::make_shared<Packet>(time, std::span(tempBuffer.data(), frame.len), isKeyBlock && i == 0);
+                (*_audioPacketCallback)(packet, audioDecoder.get());
+            }
+
+            lastAudioPacketPos = frame.pos;
         }
     }
 

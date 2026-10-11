@@ -70,6 +70,15 @@ namespace wdx {
 
         void OutputAudioPackets(const TrackPosition &start, const TrackPosition &end);
 
+        void OutputVideoBlock(const mkvparser::BlockEntry *entry);
+
+        void OutputAudioBlock(const mkvparser::BlockEntry *entry);
+
+        // Outputs every packet a track still holds, up to timeLimit, once no later Decode will reach them.
+        void OutputRemainingPackets(TrackPosition &position, TrackType type, int trackIndex, double timeLimit);
+
+        DemuxResult Finish(bool reachedLastCluster);
+
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 
         TrackType GetBlockTrackType(const mkvparser::Block *block);

@@ -9,6 +9,7 @@ namespace wdx {
 
     void TrackPosition::SetCluster(const mkvparser::Cluster *newCluster) {
         cluster = newCluster;
+        exhausted = false;
         cluster->GetFirst(entry);
         UseBlockTime();
     }
