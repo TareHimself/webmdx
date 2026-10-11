@@ -1,0 +1,4 @@
+# Where silo finds the packages silopkg.py depends on by name.
+[[registry]]
+name = "silo-recipes"
+git = "https://github.com/TareHimself/silo-recipes"
