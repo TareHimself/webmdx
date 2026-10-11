@@ -1,5 +1,4 @@
-from silo import Component, InvalidConfiguration, Options, Package, SiloPackage
-from silo.enums import Platform
+from silo import Component, Options, Package, SiloPackage
 from silo.tools.cmake import CMakeBuild, CMakeDeps, CMakeGenerator, CMakePresets
 
 CODECS = {"libvpx": "1.14.1", "dav1d": "1.4.3", "opus": "1.5.2"}
@@ -24,11 +23,6 @@ class Webmdx(SiloPackage[WebmdxOptions]):
             self.dep(f"{codec}@{version}")
         self.tool("cmake@4.3")
         self.tool("ninja@1.13")
-
-    def validate(self):
-        # The headers always import from a DLL on Windows
-        if self.profile.settings.os is Platform.Windows and not self.options.shared:
-            raise InvalidConfiguration("webmdx can only be a shared library on Windows")
 
     def generate(self):
         deps = CMakeDeps(self)
@@ -57,5 +51,6 @@ class Webmdx(SiloPackage[WebmdxOptions]):
             library.shared_libs.append("webmdx")
         else:
             library.static_libs.append("webmdx")
+            library.defines.append("WEBMDX_STATIC")
             library.requires += ["libwebm::webm", "libyuv", *CODECS]
         return Package(components=[library], licenses=["LICENSE"])
