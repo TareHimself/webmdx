@@ -22,4 +22,3 @@ The recipes for its dependencies come from the registry named in `silo.config.to
 - naive seeking
 - unreliable versioning
 - little to no comments
-- incomplete vorbis support

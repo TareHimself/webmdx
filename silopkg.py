@@ -1,7 +1,7 @@
 from silo import Component, Options, Package, SiloPackage
 from silo.tools.cmake import CMakeBuild, CMakeDeps, CMakeGenerator, CMakePresets
 
-CODECS = {"libvpx": "1.14.1", "dav1d": "1.4.3", "opus": "1.5.2"}
+CODECS = {"libvpx": "1.14.1", "dav1d": "1.4.3", "opus": "1.5.2", "vorbis": "1.3.7"}
 
 
 class WebmdxOptions(Options):
@@ -28,6 +28,7 @@ class Webmdx(SiloPackage[WebmdxOptions]):
         deps = CMakeDeps(self)
         deps.alias("webm::webm", "libwebm::webm")
         deps.alias("Opus::opus", "opus::opus")
+        deps.alias("Vorbis::vorbis", "vorbis::vorbis")
         deps.generate()
         toolchain = CMakeGenerator(self)
         toolchain.add_cache_bool("BUILD_SHARED_LIBS", self.options.shared)
