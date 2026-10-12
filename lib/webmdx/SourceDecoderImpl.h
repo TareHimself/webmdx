@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <optional>
 #include "SourceReader.h"
 #include "TrackPosition.h"
@@ -22,7 +23,7 @@ namespace wdx {
 
         SourceReader reader{};
         long long byteDecodePosition = 0;
-        mkvparser::Segment *segment{};
+        std::unique_ptr<mkvparser::Segment> segment{};
         double duration{};
         double decodedPosition{};
         long long timecodeScale = 0;
@@ -68,6 +69,15 @@ namespace wdx {
         void OutputVideoPackets(const TrackPosition &start, const TrackPosition &end);
 
         void OutputAudioPackets(const TrackPosition &start, const TrackPosition &end);
+
+        void OutputVideoBlock(const mkvparser::BlockEntry *entry);
+
+        void OutputAudioBlock(const mkvparser::BlockEntry *entry);
+
+        // Outputs every packet a track still holds, up to timeLimit, once no later Decode will reach them.
+        void OutputRemainingPackets(TrackPosition &position, TrackType type, int trackIndex, double timeLimit);
+
+        DemuxResult Finish(bool reachedLastCluster);
 
         TrackType GetEntryTrackType(const mkvparser::BlockEntry *entry);
 

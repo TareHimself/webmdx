@@ -19,8 +19,16 @@ namespace wdx {
         virtual void Decode(const std::shared_ptr<Packet>& input) = 0;
 
         virtual void Reset() = 0;
+
         /**
-         * Returns the decoded frame
+         * Releases the frames the decoder is still holding once no more packets will follow.
+         * SourceDecoder calls this when Demux() returns Finished, so drain GetFrame() after that.
+         */
+        virtual void Flush() = 0;
+        /**
+         * Returns the next decoded frame produced so far, or nullptr if none is ready.
+         * A single Decode() call can yield zero, one, or multiple frames (lookahead/reordering),
+         * so callers must call this in a loop after each Decode() until it returns nullptr.
          */
         virtual std::shared_ptr<IDecodedVideoFrame> GetFrame() = 0;
 

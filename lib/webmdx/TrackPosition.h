@@ -6,6 +6,7 @@ namespace wdx {
         const mkvparser::Cluster *cluster{};
         const mkvparser::BlockEntry *entry{};
         double time{};
+        bool exhausted{};
         void UseBlockTime();
         void SetCluster(const mkvparser::Cluster *newCluster);
     };

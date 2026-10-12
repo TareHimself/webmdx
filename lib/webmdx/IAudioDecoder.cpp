@@ -1,6 +1,7 @@
 #include "webmdx/IAudioDecoder.h"
 
 #include "audio/OpusDecoder.h"
+#include "audio/VorbisDecoder.h"
 #include "webmdx/errors.h"
 
 namespace wdx {

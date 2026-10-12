@@ -1,10 +1,8 @@
 #ifdef WEBM_DX_CODEC_VIDEO_DAV1D
 #include "Av1Decoder.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <libyuv.h>
 #include "webmdx/errors.h"
 
 namespace wdx {
@@ -12,34 +10,8 @@ namespace wdx {
         delete[] data;
     }
 
-
-    void Av1Frame::ToRgba(const std::span<std::uint8_t> &frame) {
-        if (alphaPlane.empty()) {
-            alphaStride = yStride;
-            alphaPlane = std::vector<uint8_t>(yPlane.size(), 255);
-        }
-
-        libyuv::I420AlphaToABGR(
-        yPlane.data(),
-       yStride,
-       uPlane.data(),
-       uvStride,
-       vPlane.data(),
-       uvStride,
-       alphaPlane.data(),
-       alphaStride,
-       frame.data(),
-       static_cast<int>(width) * 4,
-       static_cast<int>(width),
-       static_cast<int>(height),
-       0
-       );
-        return;
-    }
-
     Av1Decoder::Av1Decoder(const VideoTrack &track) {
         _track = track;
-        dav1d_picture_unref(&_latestPicture);
         dav1d_default_settings(&_initSettings);
         if (const auto result = dav1d_open(&_context,&_initSettings); result < 0) {
             throw AudioDecoderError(std::string("Failed to create Av1 decoder: "));
@@ -67,51 +39,73 @@ namespace wdx {
 
             if (result < 0) {
                 hasCheckedBuffer = true;
-                AdvanceToLatestPicture();
+                DrainPictures();
             }
         }while (result < 0);
 
     }
 
     std::shared_ptr<IDecodedVideoFrame> Av1Decoder::GetFrame() {
-        AdvanceToLatestPicture();
+        DrainPictures();
 
-        auto result = std::make_shared<Av1Frame>();
-        result->width = _latestPicture.p.w;
-        result->height = _latestPicture.p.h;
-        result->yStride = _latestPicture.stride[0];
-        result->uvStride = _latestPicture.stride[1];
+        if (_pendingPictures.empty()) {
+            return nullptr;
+        }
+
+        Dav1dPicture picture = _pendingPictures.front();
+        _pendingPictures.pop_front();
+
+        auto result = std::make_shared<I420Frame>();
+        result->width = picture.p.w;
+        result->height = picture.p.h;
+        result->yStride = static_cast<int>(picture.stride[0]);
+        result->uStride = static_cast<int>(picture.stride[1]);
+        result->vStride = static_cast<int>(picture.stride[1]);
         auto halfHeight = static_cast<int>(std::floor(static_cast<float>(result->height) / 2));
         result->yPlane.resize(result->height * result->yStride);
-        result->uPlane.resize(halfHeight * result->uvStride);
-        result->vPlane.resize(halfHeight * result->uvStride);
+        result->uPlane.resize(halfHeight * result->uStride);
+        result->vPlane.resize(halfHeight * result->vStride);
 
-        memcpy(result->yPlane.data(),_latestPicture.data[0],result->yPlane.size());
-        memcpy(result->uPlane.data(),_latestPicture.data[1],result->uPlane.size());
-        memcpy(result->vPlane.data(),_latestPicture.data[2],result->vPlane.size());
+        memcpy(result->yPlane.data(),picture.data[0],result->yPlane.size());
+        memcpy(result->uPlane.data(),picture.data[1],result->uPlane.size());
+        memcpy(result->vPlane.data(),picture.data[2],result->vPlane.size());
+
+        dav1d_picture_unref(&picture);
         return result;
     }
 
     Av1Decoder::~Av1Decoder() {
-        AdvanceToLatestPicture();
-        dav1d_picture_unref(&_latestPicture);
+        DrainPictures();
+        for (auto& picture : _pendingPictures) {
+            dav1d_picture_unref(&picture);
+        }
+        _pendingPictures.clear();
         dav1d_data_unref(&_data);
         dav1d_close(&_context);
     }
 
-    void Av1Decoder::AdvanceToLatestPicture() {
-        Dav1dPicture previousPicture = _latestPicture;
-
-        while (dav1d_get_picture(_context, &_latestPicture) == 0) {
-            dav1d_picture_unref(&previousPicture);
-            previousPicture = _latestPicture;
+    void Av1Decoder::DrainPictures() {
+        Dav1dPicture picture{};
+        while (dav1d_get_picture(_context, &picture) == 0) {
+            _pendingPictures.push_back(picture);
+            picture = Dav1dPicture{};
         }
+    }
+
+    void Av1Decoder::Flush()
+    {
+        // dav1d only gives up its delayed pictures on a dav1d_get_picture that follows one with no new data
+        DrainPictures();
+        DrainPictures();
     }
 
     void Av1Decoder::Reset()
     {
-        AdvanceToLatestPicture();
-        dav1d_picture_unref(&_latestPicture);
+        DrainPictures();
+        for (auto& picture : _pendingPictures) {
+            dav1d_picture_unref(&picture);
+        }
+        _pendingPictures.clear();
         dav1d_data_unref(&_data);
         dav1d_close(&_context);
 
