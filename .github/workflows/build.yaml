@@ -23,10 +23,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.3.0
 
       - name: Install silo
         run: uv tool install "git+https://github.com/TareHimself/silo#subdirectory=client"
@@ -35,7 +35,7 @@ jobs:
         run: echo "SILO_HOME=$RUNNER_TEMP/silo" >> "$GITHUB_ENV"
 
       - name: Restore built dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.SILO_HOME }}/store
           key: silo-store-${{ runner.os }}-${{ hashFiles('silopkg.py', 'silo.config.toml', 'test/**/silopkg.py') }}
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload build logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: silo-logs-${{ matrix.library }}
           path: ${{ runner.temp }}/reports
