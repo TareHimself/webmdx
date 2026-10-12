@@ -6,6 +6,8 @@ find_package(cpr REQUIRED)
 
 add_executable(${PROJECT_NAME} main.cpp NetworkSource.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE webmdx::webmdx cpr::cpr)
+# webmdx's headers use std::span
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 install(FILES ${SILO_RUNTIME_LIBRARIES} DESTINATION bin)
