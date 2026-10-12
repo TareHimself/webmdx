@@ -38,6 +38,8 @@ class WebmdxOptions(Options):
 class Webmdx(SiloPackage[WebmdxOptions]):
     name = "webmdx"
     version = "1.0.0"
+    # The public headers use std::span
+    min_cppstd = 20
     supports_shared = True
 
     def codecs(self):
