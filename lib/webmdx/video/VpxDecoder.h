@@ -21,6 +21,7 @@ namespace wdx {
         VideoTrack _track{};
         vpx_codec_ctx_t _codec{};
         vpx_codec_iter_t _iter{nullptr};
+        double _packetTime{0};
     };
 }
 #endif

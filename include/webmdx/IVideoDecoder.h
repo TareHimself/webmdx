@@ -29,6 +29,8 @@ namespace wdx {
          * Returns the next decoded frame produced so far, or nullptr if none is ready.
          * A single Decode() call can yield zero, one, or multiple frames (lookahead/reordering),
          * so callers must call this in a loop after each Decode() until it returns nullptr.
+         * A frame can come out several Decode() calls after its packet went in, so take its time
+         * from IDecodedVideoFrame::GetTime(), not from the packet passed to the latest Decode().
          */
         virtual std::shared_ptr<IDecodedVideoFrame> GetFrame() = 0;
 

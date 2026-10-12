@@ -1,6 +1,7 @@
 #ifdef WEBM_DX_CODEC_VIDEO_DAV1D
 #include "Av1Decoder.h"
 
+#include <bit>
 #include <cmath>
 #include <cstring>
 #include "webmdx/errors.h"
@@ -27,6 +28,8 @@ namespace wdx {
             delete[] data;
             throw AudioDecoderError("Failed to wrap AV1 data");
         }
+        // dav1d hands this back on the picture the packet decodes to, however long it holds it
+        _data.m.timestamp = std::bit_cast<std::int64_t>(input->GetTime());
 
         auto hasCheckedBuffer = false;
         auto result = 0;
@@ -58,6 +61,7 @@ namespace wdx {
         auto result = std::make_shared<I420Frame>();
         result->width = picture.p.w;
         result->height = picture.p.h;
+        result->time = std::bit_cast<double>(picture.m.timestamp);
         result->yStride = static_cast<int>(picture.stride[0]);
         result->uStride = static_cast<int>(picture.stride[1]);
         result->vStride = static_cast<int>(picture.stride[1]);

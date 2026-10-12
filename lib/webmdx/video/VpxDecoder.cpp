@@ -19,6 +19,8 @@ namespace wdx {
         // A fresh iterator starts a new pull over the frames this Decode() made available;
         // vpx_codec_decode can surface more than one frame per call (e.g. VP9 superframes).
         _iter = nullptr;
+        // libvpx decodes a packet before vpx_codec_decode returns, so the frames it offers are this packet's
+        _packetTime = input->GetTime();
     }
 
     std::shared_ptr<IDecodedVideoFrame> VpxDecoder::GetFrame() {
@@ -30,6 +32,7 @@ namespace wdx {
         auto result = std::make_shared<I420Frame>();
         result->width = static_cast<int>(frame->d_w);
         result->height = static_cast<int>(frame->d_h);
+        result->time = _packetTime;
         result->yStride = frame->stride[VPX_PLANE_Y];
         result->uStride = frame->stride[VPX_PLANE_U];
         result->vStride = frame->stride[VPX_PLANE_V];

@@ -10,6 +10,10 @@ namespace wdx {
      */
     struct WEBMDX_API  IDecodedVideoFrame {
         virtual ~IDecodedVideoFrame() = default;
+        /**
+         * The time, in seconds, of the packet this frame was decoded from
+         */
+        [[nodiscard]] virtual double GetTime() const = 0;
         virtual void ToRgba(const std::span<std::uint8_t>& frame) = 0;
         virtual void ToNV12(const std::span<std::uint8_t>& y,const std::span<std::uint8_t>& uv) = 0;
     };

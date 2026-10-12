@@ -18,7 +18,9 @@ namespace wdx {
         int uStride{0};
         int vStride{0};
         int alphaStride{0};
+        double time{0};
 
+        [[nodiscard]] double GetTime() const override { return time; }
         void ToRgba(const std::span<std::uint8_t>& frame) override;
         void ToNV12(const std::span<std::uint8_t>& y, const std::span<std::uint8_t>& uv) override;
     };
