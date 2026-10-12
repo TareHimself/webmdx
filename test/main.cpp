@@ -49,6 +49,8 @@ namespace
         bool videoInOrder = true;
         bool audioInOrder = true;
         bool firstFrameHasContent = false;
+        bool framesCarryPacketTimes = true;
+        std::vector<double> videoPacketTimes{};
         std::vector<std::uint8_t> rgba(static_cast<std::size_t>(track.width) * track.height * 4);
 
         const auto takeFrames = [&](wdx::IVideoDecoder* videoDecoder)
@@ -63,6 +65,8 @@ namespace
                         firstFrameHasContent = firstFrameHasContent || value != rgba[0];
                     }
                 }
+                framesCarryPacketTimes = framesCarryPacketTimes && videoFrames < videoPacketTimes.size()
+                    && frame->GetTime() == videoPacketTimes[videoFrames];
                 videoFrames++;
             }
         };
@@ -72,6 +76,7 @@ namespace
             videoInOrder = videoInOrder && packet->GetTime() >= lastVideoTime;
             lastVideoTime = packet->GetTime();
             videoPackets++;
+            videoPacketTimes.push_back(packet->GetTime());
             videoDecoder->Decode(packet);
             takeFrames(videoDecoder);
         });
@@ -94,6 +99,7 @@ namespace
         takeFrames(decoder->GetVideoDecoder());
         check(videoPackets == expected.videoPackets, "video packet count is " + std::to_string(expected.videoPackets) + ", got " + std::to_string(videoPackets));
         check(videoFrames == videoPackets, "every video packet decodes to a frame, got " + std::to_string(videoFrames));
+        check(framesCarryPacketTimes, "every frame carries the time of the packet it was decoded from");
         check(firstFrameHasContent, "first frame converts to a non-blank RGBA image");
         check(videoInOrder, "video packet times never go backwards");
         check(audioInOrder, "audio packet times never go backwards");
