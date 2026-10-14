@@ -1,7 +1,5 @@
 #ifdef WEBM_DX_CODEC_VIDEO_VPX
 #include "VpxDecoder.h"
-#include <cmath>
-#include <cstring>
 #include <thread>
 #include "webmdx/errors.h"
 
@@ -33,26 +31,16 @@ namespace wdx {
         result->width = static_cast<int>(frame->d_w);
         result->height = static_cast<int>(frame->d_h);
         result->time = _packetTime;
-        result->yStride = frame->stride[VPX_PLANE_Y];
-        result->uStride = frame->stride[VPX_PLANE_U];
-        result->vStride = frame->stride[VPX_PLANE_V];
-
-        result->yPlane.resize(result->height * result->yStride);
-
-        auto halfHeight = static_cast<int>(std::floor(static_cast<float>(result->height) / 2));
-        result->uPlane.resize(halfHeight * result->uStride);
-        result->vPlane.resize(halfHeight * result->vStride);
-
-
-
-        memcpy(result->yPlane.data(),frame->planes[VPX_PLANE_Y],result->yPlane.size());
-        memcpy(result->uPlane.data(),frame->planes[VPX_PLANE_U],result->uPlane.size());
-        memcpy(result->vPlane.data(),frame->planes[VPX_PLANE_V],result->vPlane.size());
-
-        if (auto alphaPlane = frame->planes[VPX_PLANE_ALPHA]) {
-            result->alphaStride = frame->stride[VPX_PLANE_ALPHA];
-            result->alphaPlane.resize(result->height * result->alphaStride);
-            memcpy(result->alphaPlane.data(),alphaPlane,result->alphaPlane.size());
+        const auto halfHeight = (result->height + 1) / 2;
+        const auto bytesPerSample = frame->fmt & VPX_IMG_FMT_HIGHBITDEPTH ? 2 : 1;
+        const auto plane = [&](const int index, const int height) {
+            return DecodedPlane{frame->planes[index], frame->stride[index], height, bytesPerSample, static_cast<int>(frame->bit_depth)};
+        };
+        I420Frame::CopyPlane(result->yPlane, result->yStride, plane(VPX_PLANE_Y, result->height));
+        I420Frame::CopyPlane(result->uPlane, result->uStride, plane(VPX_PLANE_U, halfHeight));
+        I420Frame::CopyPlane(result->vPlane, result->vStride, plane(VPX_PLANE_V, halfHeight));
+        if (frame->planes[VPX_PLANE_ALPHA]) {
+            I420Frame::CopyPlane(result->alphaPlane, result->alphaStride, plane(VPX_PLANE_ALPHA, result->height));
         }
         return result;
     }

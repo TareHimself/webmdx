@@ -1,7 +1,24 @@
 #include "I420Frame.h"
+#include <cstring>
 #include <libyuv.h>
 
 namespace wdx {
+    void I420Frame::CopyPlane(std::vector<std::uint8_t>& plane, int& stride, const DecodedPlane& source) {
+        if (source.bytesPerSample == 1) {
+            stride = source.stride;
+            plane.resize(static_cast<std::size_t>(source.height) * stride);
+            std::memcpy(plane.data(), source.data, plane.size());
+            return;
+        }
+        stride = source.stride / 2;
+        plane.resize(static_cast<std::size_t>(source.height) * stride);
+        libyuv::Convert16To8Plane(
+            reinterpret_cast<const std::uint16_t*>(source.data), stride,
+            plane.data(), stride,
+            1 << (24 - source.bitDepth),
+            stride, source.height);
+    }
+
     void I420Frame::ToRgba(const std::span<std::uint8_t> &frame) {
         if (alphaPlane.empty()) {
             alphaStride = yStride;

@@ -782,13 +782,60 @@ namespace
             << audioPackets << " audio packets, " << audioSamples << " samples" << std::endl;
         return audioPackets;
     }
+    // The first frame of a file as RGBA, as a caller drawing it would see it.
+    std::vector<std::uint8_t> firstFrameRgba(const char* path)
+    {
+        const auto decoder = std::make_shared<wdx::SourceDecoder>();
+        decoder->SetSource(std::make_shared<wdx::FileSource>(path));
+        decoder->EnsureHeader();
+        const auto track = decoder->GetVideoTrack();
+        std::vector<std::uint8_t> rgba{};
+        decoder->SetVideoPacketCallback([&](const std::shared_ptr<wdx::Packet>& packet, wdx::IVideoDecoder* videoDecoder)
+        {
+            if (!rgba.empty())
+            {
+                return;
+            }
+            videoDecoder->Decode(packet);
+            if (const auto frame = videoDecoder->GetFrame())
+            {
+                rgba.resize(static_cast<std::size_t>(track.width) * track.height * 4);
+                frame->ToRgba(rgba);
+            }
+        });
+        while (rgba.empty() && decoder->Demux(0.1) == wdx::DemuxResult::Success)
+        {
+        }
+        return rgba;
+    }
+
+    // A file encoded from the same pictures as the reference decodes to nearly the same first frame.
+    // Mistaking the sample layout (a 10 bit frame read as 8 bit, say) looks nothing like it.
+    void testMatchesReference(const char* path, const char* reference)
+    {
+        const auto frame = firstFrameRgba(path);
+        const auto expected = firstFrameRgba(reference);
+        check(!frame.empty() && frame.size() == expected.size(), "the first frame is the size of the reference's");
+        if (frame.empty() || frame.size() != expected.size())
+        {
+            return;
+        }
+        std::uint64_t difference = 0;
+        for (std::size_t i = 0; i < frame.size(); i++)
+        {
+            difference += frame[i] > expected[i] ? frame[i] - expected[i] : expected[i] - frame[i];
+        }
+        const auto meanDifference = static_cast<double>(difference) / static_cast<double>(frame.size());
+        check(meanDifference < 4, "the first frame matches the reference's, mean difference per channel " + std::to_string(meanDifference));
+        std::cout << path << " first frame differs from the reference's by " << meanDifference << " per channel" << std::endl;
+    }
 }
 
 int main(int argc, char* argv[])
 {
     if (argc < 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <path_to_webm_file> <width> <height> <video_packets>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <path_to_webm_file> <width> <height> <video_packets> [reference_webm_file]" << std::endl;
         return 2;
     }
     try
@@ -803,6 +850,10 @@ int main(int argc, char* argv[])
         testSeekingIntoDropped(argv[1]);
         testSeekingBack(argv[1]);
         testDecoderFactories(argv[1]);
+        if (argc > 5)
+        {
+            testMatchesReference(argv[1], argv[5]);
+        }
     }
     catch (const std::exception& e)
     {

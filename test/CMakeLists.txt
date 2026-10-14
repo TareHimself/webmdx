@@ -17,8 +17,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 enable_testing()
 set(DOWNLOADED_MEDIA_DIR ${CMAKE_CURRENT_BINARY_DIR}/media)
 
+# An optional reference file, encoded from the same pictures, is compared against the first frame
 function(add_decode_test name media_file width height video_packets)
-    add_test(NAME decode-${name} COMMAND ${PROJECT_NAME} ${media_file} ${width} ${height} ${video_packets})
+    add_test(NAME decode-${name} COMMAND ${PROJECT_NAME} ${media_file} ${width} ${height} ${video_packets} ${ARGN})
 endfunction()
 
 function(add_downloaded_decode_test name url sha256 width height video_packets)
@@ -31,6 +32,10 @@ endfunction()
 add_decode_test(vp8-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus.webm 320 240 50)
 add_decode_test(vp9-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm 320 240 50)
 add_decode_test(av1-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm 320 240 50)
+
+# The same pictures in 10 bit, decoded down to the 8 bit the frames above hold
+add_decode_test(vp9-10bit-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-10bit-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm)
+add_decode_test(av1-10bit-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-10bit-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm)
 
 # vp8-opus with its blocks split over two clusters, the first of which has no audio
 add_decode_test(vp8-opus-late-audio ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus-late-audio.webm 320 240 50)
