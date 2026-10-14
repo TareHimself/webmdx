@@ -380,7 +380,7 @@ namespace wdx {
         return BlockEnd(entry) <= reader.source->GetAvailableFrom(entry->GetBlock()->m_start);
     }
 
-    std::int64_t SourceDecoder::Impl::BlockEnd(const mkvparser::BlockEntry* entry) {
+    long long SourceDecoder::Impl::BlockEnd(const mkvparser::BlockEntry* entry) {
         const auto block = entry->GetBlock();
         return block->m_start + block->m_size;
     }
