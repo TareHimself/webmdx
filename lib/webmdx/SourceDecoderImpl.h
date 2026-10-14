@@ -89,7 +89,8 @@ namespace wdx {
             long long needed{}; // where the source has to reach for the next block, when not complete
         };
 
-        // Parses what the source holds of a cluster, without pulling.
+        // Parses what the source holds of a cluster, without pulling. Blocks whose data the source no longer
+        // holds do not count, so a cluster that was played and dropped reads as needing its bytes again.
         ClusterExtent MeasureCluster(const mkvparser::Cluster* target);
 
         // Bytes held in an unbroken run from where mkvparser is working.
@@ -113,6 +114,9 @@ namespace wdx {
 
         // libwebm lists a block before its payload has arrived.
         [[nodiscard]] bool IsBlockAvailable(const mkvparser::BlockEntry* entry) const;
+
+        // Where the block's data ends in the source.
+        [[nodiscard]] static std::int64_t BlockEnd(const mkvparser::BlockEntry* entry);
 
         // Finds the first block of a track that has had none, up to the current cluster.
         bool LocateTrack(TrackPosition& position, TrackType type, int trackIndex);

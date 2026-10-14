@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <typeinfo>
@@ -76,10 +77,15 @@ namespace
     class RangeSource final : public wdx::ISource
     {
     public:
-        explicit RangeSource(std::vector<std::uint8_t> data) : _data(std::move(data)) {}
+        // With dropReleased, pieces the decoder is done with are forgotten, the way a source fetching over a network would.
+        explicit RangeSource(std::vector<std::uint8_t> data, const bool dropReleased = false) : _data(std::move(data)), _dropReleased(dropReleased) {}
 
         void Read(const std::int64_t& pos, std::span<std::uint8_t> data) override
         {
+            if (GetAvailableFrom(pos) < pos + static_cast<std::int64_t>(data.size()))
+            {
+                throw std::out_of_range("RangeSource::Read outside the held pieces");
+            }
             std::memcpy(data.data(), _data.data() + pos, data.size());
         }
 
@@ -103,6 +109,7 @@ namespace
         {
             auto start = pos;
             auto end = std::min(pos + static_cast<std::int64_t>(size), GetLength());
+            requests.push_back({start, end});
             // Pieces that touch are kept as one.
             for (auto piece = _held.begin(); piece != _held.end();)
             {
@@ -123,6 +130,26 @@ namespace
             }
         }
 
+        void ReleaseBefore(const std::int64_t& pos) override
+        {
+            if (!_dropReleased)
+            {
+                return;
+            }
+            _released = pos;
+            auto piece = _held.begin();
+            while (piece != _held.end() && piece->second <= pos)
+            {
+                piece = _held.erase(piece);
+            }
+            if (piece != _held.end() && piece->first < pos)
+            {
+                const auto end = piece->second;
+                _held.erase(piece);
+                _held[pos] = end;
+            }
+        }
+
         [[nodiscard]] std::size_t CountHeld() const
         {
             std::int64_t held = 0;
@@ -133,10 +160,17 @@ namespace
             return static_cast<std::size_t>(held);
         }
 
+        [[nodiscard]] std::int64_t GetReleased() const { return _released; }
+
+        // Every range the decoder has asked for.
+        std::vector<wdx::ByteRange> requests;
+
     private:
         std::vector<std::uint8_t> _data;
         // Start to end of each piece held.
         std::map<std::int64_t, std::int64_t> _held;
+        bool _dropReleased;
+        std::int64_t _released{};
     };
 
     struct StreamedCounts
@@ -323,9 +357,43 @@ namespace
     {
         double time;
         bool isKey;
+        std::size_t dataHash;
 
         bool operator==(const VideoPacket&) const = default;
     };
+
+    VideoPacket describe(const std::shared_ptr<wdx::Packet>& packet)
+    {
+        const auto data = packet->GetData();
+        const std::string_view bytes{reinterpret_cast<const char*>(data.data()), data.size()};
+        return {packet->GetTime(), packet->IsKey(), std::hash<std::string_view>{}(bytes)};
+    }
+
+    // What a seek to time should give: everything from the last key frame at or before it.
+    std::vector<VideoPacket> fromKeyFrame(const std::vector<VideoPacket>& all, const double time)
+    {
+        std::size_t start = 0;
+        for (std::size_t i = 0; i < all.size() && all[i].time <= time; i++)
+        {
+            if (all[i].isKey)
+            {
+                start = i;
+            }
+        }
+        return {all.begin() + static_cast<std::ptrdiff_t>(start), all.end()};
+    }
+
+    // Where each cluster starts, from the cluster IDs in the file.
+    std::vector<std::int64_t> findClusterStarts(const std::vector<std::uint8_t>& data)
+    {
+        const std::string_view bytes{reinterpret_cast<const char*>(data.data()), data.size()};
+        std::vector<std::int64_t> starts{};
+        for (auto at = bytes.find("\x1F\x43\xB6\x75"); at != std::string_view::npos; at = bytes.find("\x1F\x43\xB6\x75", at + 1))
+        {
+            starts.push_back(static_cast<std::int64_t>(at));
+        }
+        return starts;
+    }
 
     wdx::DemuxResult demuxToEnd(const wdx::SourceDecoder& decoder)
     {
@@ -399,19 +467,79 @@ namespace
         if (source->GetBufferedSize() < data.size())
         {
             const auto position = decoder.GetPosition();
+            const auto dropped = static_cast<std::int64_t>(data.size() - source->GetBufferedSize());
             check(decoder.Seek(0) == wdx::DemuxResult::IncompleteCluster, "a seek back into dropped data asks for it");
             check(decoder.GetPosition() == position, "a seek back into dropped data leaves the decoder where it was");
+            const auto needed = decoder.GetNeededRange();
+            check(needed.start < needed.end && needed.end <= dropped && needed.end == decoder.GetBytesNeeded(),
+                "a seek back into dropped data says which of it to append again, got " + std::to_string(needed.start) + " to " + std::to_string(needed.end) + " of " + std::to_string(dropped) + " dropped");
         }
+    }
+
+    void testSeekingBack(const char* path)
+    {
+        const auto data = readFile(path);
+        const auto starts = findClusterStarts(data);
+        std::int64_t largestCluster = 0;
+        for (std::size_t i = 0; i < starts.size(); i++)
+        {
+            const auto end = i + 1 < starts.size() ? starts[i + 1] : static_cast<std::int64_t>(data.size());
+            largestCluster = std::max(largestCluster, end - starts[i]);
+        }
+
+        std::vector<VideoPacket> packets{};
+        const auto collect = [&](const std::shared_ptr<wdx::Packet>& packet, wdx::IVideoDecoder*) { packets.push_back(describe(packet)); };
+        const wdx::SourceDecoder whole{};
+        whole.SetSource(std::make_shared<wdx::FileSource>(path));
+        whole.SetVideoPacketCallback(collect);
+        demuxToEnd(whole);
+        const auto all = packets;
+        const auto duration = whole.GetDuration();
+
+        const auto source = std::make_shared<RangeSource>(data, true);
+        const wdx::SourceDecoder decoder{};
+        decoder.SetSource(source);
+        decoder.SetVideoPacketCallback(collect);
+        auto result = decoder.Demux(0.1);
+        while (result == wdx::DemuxResult::Success && decoder.GetPosition() < duration / 2)
+        {
+            result = decoder.Demux(0.1);
+        }
+        check(result == wdx::DemuxResult::Success, "a source that drops what the decoder is done with plays to the middle");
+        check(decoder.Seek(duration * 0.9) == wdx::DemuxResult::Success, "a seek forward on a source that drops what the decoder is done with works");
+        const auto released = source->GetReleased();
+
+        // Seeking back lands below what was released, so the source holds nothing from there up to where it was playing.
+        const auto time = duration * 0.2;
+        source->requests.clear();
+        packets.clear();
+        check(decoder.Seek(time) == wdx::DemuxResult::Success, "a seek back on a source that drops what the decoder is done with works");
+        std::int64_t requested = 0;
+        auto lowest = static_cast<std::int64_t>(data.size());
+        for (const auto& [start, end] : source->requests)
+        {
+            requested += end - start;
+            lowest = std::min(lowest, start);
+        }
+        std::cout << path << " seek back to 0.2: fetched " << requested << " bytes in " << source->requests.size() << " requests from " << lowest
+            << ", released up to " << released << ", largest cluster " << largestCluster << std::endl;
+        check(requested <= 2 * largestCluster, "a seek back fetches no more than the clusters it lands on, got " + std::to_string(requested) + " with clusters of up to " + std::to_string(largestCluster));
+        if (starts.size() >= 4)
+        {
+            check(lowest < released, "a seek back on a file with several clusters lands in dropped data");
+            check(requested < released - lowest, "a seek back does not fetch everything up to what was released, got " + std::to_string(requested) + " of " + std::to_string(released - lowest));
+        }
+
+        const auto expected = fromKeyFrame(all, time);
+        check(demuxToEnd(decoder) == wdx::DemuxResult::Finished, "demux reaches the end after a seek back on a source that drops what the decoder is done with");
+        check(packets == expected, "playing on from a seek back gives the " + std::to_string(expected.size()) + " video packets from its key frame on, with their data, got " + std::to_string(packets.size()));
     }
 
     void testIndexSeeking(const char* path)
     {
         const auto data = readFile(path);
         std::vector<VideoPacket> packets{};
-        const auto collect = [&](const std::shared_ptr<wdx::Packet>& packet, wdx::IVideoDecoder*)
-        {
-            packets.push_back({packet->GetTime(), packet->IsKey()});
-        };
+        const auto collect = [&](const std::shared_ptr<wdx::Packet>& packet, wdx::IVideoDecoder*) { packets.push_back(describe(packet)); };
 
         const wdx::SourceDecoder whole{};
         whole.SetSource(std::make_shared<wdx::FileSource>(path));
@@ -420,26 +548,7 @@ namespace
         const auto all = packets;
         const auto duration = whole.GetDuration();
         // The index points at clusters, so a file with few of them has nothing to skip.
-        const std::string_view bytes{reinterpret_cast<const char*>(data.data()), data.size()};
-        std::size_t clusters = 0;
-        for (auto at = bytes.find("\x1F\x43\xB6\x75"); at != std::string_view::npos; at = bytes.find("\x1F\x43\xB6\x75", at + 1))
-        {
-            clusters++;
-        }
-
-        // What a seek should give: everything from the last key frame at or before the time.
-        const auto expectedFrom = [&](const double time)
-        {
-            std::size_t start = 0;
-            for (std::size_t i = 0; i < all.size() && all[i].time <= time; i++)
-            {
-                if (all[i].isKey)
-                {
-                    start = i;
-                }
-            }
-            return std::vector(all.begin() + static_cast<std::ptrdiff_t>(start), all.end());
-        };
+        const auto clusters = findClusterStarts(data).size();
 
         const auto source = std::make_shared<RangeSource>(data);
         const wdx::SourceDecoder decoder{};
@@ -454,7 +563,7 @@ namespace
             const auto name = "a seek to " + std::to_string(fraction) + " of a source that holds pieces";
             packets.clear();
             check(decoder.Seek(time) == wdx::DemuxResult::Success, name + " works");
-            const auto expected = expectedFrom(time);
+            const auto expected = fromKeyFrame(all, time);
             const auto held = source->CountHeld();
             check(demuxToEnd(decoder) == wdx::DemuxResult::Finished, name + " plays to the end");
             check(packets == expected, name + " gives the " + std::to_string(expected.size()) + " video packets from its key frame on, got " + std::to_string(packets.size()));
@@ -687,6 +796,7 @@ int main(int argc, char* argv[])
         testRejecting(argv[1]);
         testIndexSeeking(argv[1]);
         testSeekingIntoDropped(argv[1]);
+        testSeekingBack(argv[1]);
         testDecoderFactories(argv[1]);
     }
     catch (const std::exception& e)
