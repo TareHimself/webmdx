@@ -782,52 +782,68 @@ namespace
             << audioPackets << " audio packets, " << audioSamples << " samples" << std::endl;
         return audioPackets;
     }
-    // The first frame of a file as RGBA, as a caller drawing it would see it.
-    std::vector<std::uint8_t> firstFrameRgba(const char* path)
+    struct FirstFrame
+    {
+        std::vector<std::uint8_t> rgba;
+        std::vector<std::uint8_t> nv12;
+    };
+
+    // The first frame of a file in both outputs, as a caller drawing it would see it.
+    FirstFrame firstFrame(const char* path)
     {
         const auto decoder = std::make_shared<wdx::SourceDecoder>();
         decoder->SetSource(std::make_shared<wdx::FileSource>(path));
         decoder->EnsureHeader();
         const auto track = decoder->GetVideoTrack();
-        std::vector<std::uint8_t> rgba{};
+        const auto pixels = static_cast<std::size_t>(track.width) * track.height;
+        FirstFrame frame{};
         decoder->SetVideoPacketCallback([&](const std::shared_ptr<wdx::Packet>& packet, wdx::IVideoDecoder* videoDecoder)
         {
-            if (!rgba.empty())
+            if (!frame.rgba.empty())
             {
                 return;
             }
             videoDecoder->Decode(packet);
-            if (const auto frame = videoDecoder->GetFrame())
+            if (const auto decoded = videoDecoder->GetFrame())
             {
-                rgba.resize(static_cast<std::size_t>(track.width) * track.height * 4);
-                frame->ToRgba(rgba);
+                frame.rgba.resize(pixels * 4);
+                decoded->ToRgba(frame.rgba);
+                frame.nv12.resize(pixels + pixels / 2);
+                decoded->ToNV12(std::span(frame.nv12).first(pixels), std::span(frame.nv12).subspan(pixels));
             }
         });
-        while (rgba.empty() && decoder->Demux(0.1) == wdx::DemuxResult::Success)
+        while (frame.rgba.empty() && decoder->Demux(0.1) == wdx::DemuxResult::Success)
         {
         }
-        return rgba;
+        return frame;
+    }
+
+    double meanDifference(const std::vector<std::uint8_t>& a, const std::vector<std::uint8_t>& b)
+    {
+        std::uint64_t difference = 0;
+        for (std::size_t i = 0; i < a.size(); i++)
+        {
+            difference += a[i] > b[i] ? a[i] - b[i] : b[i] - a[i];
+        }
+        return static_cast<double>(difference) / static_cast<double>(a.size());
     }
 
     // A file encoded from the same pictures as the reference decodes to nearly the same first frame.
-    // Mistaking the sample layout (a 10 bit frame read as 8 bit, say) looks nothing like it.
+    // Mistaking the sample layout (a 10 bit or 4:4:4 frame read as 8 bit 4:2:0, say) looks nothing like it.
     void testMatchesReference(const char* path, const char* reference)
     {
-        const auto frame = firstFrameRgba(path);
-        const auto expected = firstFrameRgba(reference);
-        check(!frame.empty() && frame.size() == expected.size(), "the first frame is the size of the reference's");
-        if (frame.empty() || frame.size() != expected.size())
+        const auto frame = firstFrame(path);
+        const auto expected = firstFrame(reference);
+        check(!frame.rgba.empty() && frame.rgba.size() == expected.rgba.size(), "the first frame is the size of the reference's");
+        if (frame.rgba.empty() || frame.rgba.size() != expected.rgba.size())
         {
             return;
         }
-        std::uint64_t difference = 0;
-        for (std::size_t i = 0; i < frame.size(); i++)
-        {
-            difference += frame[i] > expected[i] ? frame[i] - expected[i] : expected[i] - frame[i];
-        }
-        const auto meanDifference = static_cast<double>(difference) / static_cast<double>(frame.size());
-        check(meanDifference < 4, "the first frame matches the reference's, mean difference per channel " + std::to_string(meanDifference));
-        std::cout << path << " first frame differs from the reference's by " << meanDifference << " per channel" << std::endl;
+        const auto rgba = meanDifference(frame.rgba, expected.rgba);
+        const auto nv12 = meanDifference(frame.nv12, expected.nv12);
+        check(rgba < 4, "the first frame's RGBA matches the reference's, mean difference per channel " + std::to_string(rgba));
+        check(nv12 < 4, "the first frame's NV12 matches the reference's, mean difference per sample " + std::to_string(nv12));
+        std::cout << path << " first frame differs from the reference's by " << rgba << " per RGBA channel, " << nv12 << " per NV12 sample" << std::endl;
     }
 }
 

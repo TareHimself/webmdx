@@ -1,5 +1,6 @@
 #ifdef WEBM_DX_CODEC_VIDEO_VPX
 #include "VpxDecoder.h"
+#include <string>
 #include <thread>
 #include "webmdx/errors.h"
 
@@ -27,20 +28,32 @@ namespace wdx {
             return nullptr;
         }
 
-        auto result = std::make_shared<I420Frame>();
+        auto result = std::make_shared<PlanarFrame>();
         result->width = static_cast<int>(frame->d_w);
         result->height = static_cast<int>(frame->d_h);
         result->time = _packetTime;
-        const auto halfHeight = (result->height + 1) / 2;
+        switch (frame->fmt & ~VPX_IMG_FMT_HIGHBITDEPTH) {
+        case VPX_IMG_FMT_I420:
+            result->layout = ChromaLayout::I420;
+            break;
+        case VPX_IMG_FMT_I422:
+            result->layout = ChromaLayout::I422;
+            break;
+        case VPX_IMG_FMT_I444:
+            result->layout = ChromaLayout::I444;
+            break;
+        default:
+            throw VideoDecoderError("Unsupported vpx image format " + std::to_string(frame->fmt));
+        }
         const auto bytesPerSample = frame->fmt & VPX_IMG_FMT_HIGHBITDEPTH ? 2 : 1;
         const auto plane = [&](const int index, const int height) {
             return DecodedPlane{frame->planes[index], frame->stride[index], height, bytesPerSample, static_cast<int>(frame->bit_depth)};
         };
-        I420Frame::CopyPlane(result->yPlane, result->yStride, plane(VPX_PLANE_Y, result->height));
-        I420Frame::CopyPlane(result->uPlane, result->uStride, plane(VPX_PLANE_U, halfHeight));
-        I420Frame::CopyPlane(result->vPlane, result->vStride, plane(VPX_PLANE_V, halfHeight));
+        PlanarFrame::CopyPlane(result->yPlane, result->yStride, plane(VPX_PLANE_Y, result->height));
+        PlanarFrame::CopyPlane(result->uPlane, result->uStride, plane(VPX_PLANE_U, result->ChromaHeight()));
+        PlanarFrame::CopyPlane(result->vPlane, result->vStride, plane(VPX_PLANE_V, result->ChromaHeight()));
         if (frame->planes[VPX_PLANE_ALPHA]) {
-            I420Frame::CopyPlane(result->alphaPlane, result->alphaStride, plane(VPX_PLANE_ALPHA, result->height));
+            PlanarFrame::CopyPlane(result->alphaPlane, result->alphaStride, plane(VPX_PLANE_ALPHA, result->height));
         }
         return result;
     }

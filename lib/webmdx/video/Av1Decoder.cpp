@@ -3,6 +3,7 @@
 
 #include <bit>
 #include <cstring>
+#include <string>
 #include "webmdx/errors.h"
 
 namespace wdx {
@@ -57,17 +58,30 @@ namespace wdx {
         Dav1dPicture picture = _pendingPictures.front();
         _pendingPictures.pop_front();
 
-        auto result = std::make_shared<I420Frame>();
+        auto result = std::make_shared<PlanarFrame>();
         result->width = picture.p.w;
         result->height = picture.p.h;
         result->time = std::bit_cast<double>(picture.m.timestamp);
-        const auto halfHeight = (result->height + 1) / 2;
+        switch (picture.p.layout) {
+        case DAV1D_PIXEL_LAYOUT_I420:
+            result->layout = ChromaLayout::I420;
+            break;
+        case DAV1D_PIXEL_LAYOUT_I422:
+            result->layout = ChromaLayout::I422;
+            break;
+        case DAV1D_PIXEL_LAYOUT_I444:
+            result->layout = ChromaLayout::I444;
+            break;
+        default:
+            dav1d_picture_unref(&picture);
+            throw VideoDecoderError("Unsupported dav1d pixel layout " + std::to_string(picture.p.layout));
+        }
         const auto plane = [&](const int index, const int height) {
             return DecodedPlane{static_cast<const std::uint8_t*>(picture.data[index]), static_cast<int>(picture.stride[index > 0]), height, picture.p.bpc > 8 ? 2 : 1, picture.p.bpc};
         };
-        I420Frame::CopyPlane(result->yPlane, result->yStride, plane(0, result->height));
-        I420Frame::CopyPlane(result->uPlane, result->uStride, plane(1, halfHeight));
-        I420Frame::CopyPlane(result->vPlane, result->vStride, plane(2, halfHeight));
+        PlanarFrame::CopyPlane(result->yPlane, result->yStride, plane(0, result->height));
+        PlanarFrame::CopyPlane(result->uPlane, result->uStride, plane(1, result->ChromaHeight()));
+        PlanarFrame::CopyPlane(result->vPlane, result->vStride, plane(2, result->ChromaHeight()));
 
         dav1d_picture_unref(&picture);
         return result;

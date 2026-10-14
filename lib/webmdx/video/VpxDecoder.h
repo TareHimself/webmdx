@@ -1,7 +1,7 @@
 #pragma once
 #ifdef WEBM_DX_CODEC_VIDEO_VPX
 #include "webmdx/IVideoDecoder.h"
-#include "I420Frame.h"
+#include "PlanarFrame.h"
 #include <vpx/vp8dx.h>
 #include <vpx/vpx_decoder.h>
 #include <span>
