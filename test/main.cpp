@@ -383,12 +383,17 @@ namespace
         return {all.begin() + static_cast<std::ptrdiff_t>(start), all.end()};
     }
 
-    // Where each cluster starts, from the cluster IDs in the file.
+    // The EBML ID of a Cluster element, 0x1F43B675 (libwebm's kMkvCluster), as its bytes sit in the file.
+    constexpr std::string_view kClusterId{"\x1F\x43\xB6\x75", 4};
+
+    // Where each cluster starts, by scanning for the ID instead of parsing: a test-only shortcut. The ID can also turn
+    // up inside frame data, which would only shift the cluster count and the largest-cluster bound a little, and as the
+    // sample files never change, any such hit shows up on every run rather than at random.
     std::vector<std::int64_t> findClusterStarts(const std::vector<std::uint8_t>& data)
     {
         const std::string_view bytes{reinterpret_cast<const char*>(data.data()), data.size()};
         std::vector<std::int64_t> starts{};
-        for (auto at = bytes.find("\x1F\x43\xB6\x75"); at != std::string_view::npos; at = bytes.find("\x1F\x43\xB6\x75", at + 1))
+        for (auto at = bytes.find(kClusterId); at != std::string_view::npos; at = bytes.find(kClusterId, at + 1))
         {
             starts.push_back(static_cast<std::int64_t>(at));
         }
