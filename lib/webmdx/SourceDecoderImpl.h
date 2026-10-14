@@ -116,7 +116,7 @@ namespace wdx {
         [[nodiscard]] bool IsBlockAvailable(const mkvparser::BlockEntry* entry) const;
 
         // Where the block's data ends in the source.
-        [[nodiscard]] static std::int64_t BlockEnd(const mkvparser::BlockEntry* entry);
+        [[nodiscard]] static long long BlockEnd(const mkvparser::BlockEntry* entry);
 
         // Finds the first block of a track that has had none, up to the current cluster.
         bool LocateTrack(TrackPosition& position, TrackType type, int trackIndex);
