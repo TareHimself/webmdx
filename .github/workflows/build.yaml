@@ -34,13 +34,6 @@ jobs:
       - name: Keep silo's files outside the checkout
         run: echo "SILO_HOME=$RUNNER_TEMP/silo" >> "$GITHUB_ENV"
 
-      - name: Restore built dependencies
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.SILO_HOME }}/store
-          key: silo-store-${{ runner.os }}-${{ hashFiles('silopkg.py', 'silo.config.toml', 'test/**/silopkg.py') }}
-          restore-keys: silo-store-${{ runner.os }}-
-
       - name: Detect the compiler
         run: silo profile detect
 
