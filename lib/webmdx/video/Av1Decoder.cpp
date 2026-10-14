@@ -2,7 +2,6 @@
 #include "Av1Decoder.h"
 
 #include <bit>
-#include <cmath>
 #include <cstring>
 #include "webmdx/errors.h"
 
@@ -62,17 +61,13 @@ namespace wdx {
         result->width = picture.p.w;
         result->height = picture.p.h;
         result->time = std::bit_cast<double>(picture.m.timestamp);
-        result->yStride = static_cast<int>(picture.stride[0]);
-        result->uStride = static_cast<int>(picture.stride[1]);
-        result->vStride = static_cast<int>(picture.stride[1]);
-        auto halfHeight = static_cast<int>(std::floor(static_cast<float>(result->height) / 2));
-        result->yPlane.resize(result->height * result->yStride);
-        result->uPlane.resize(halfHeight * result->uStride);
-        result->vPlane.resize(halfHeight * result->vStride);
-
-        memcpy(result->yPlane.data(),picture.data[0],result->yPlane.size());
-        memcpy(result->uPlane.data(),picture.data[1],result->uPlane.size());
-        memcpy(result->vPlane.data(),picture.data[2],result->vPlane.size());
+        const auto halfHeight = (result->height + 1) / 2;
+        const auto plane = [&](const int index, const int height) {
+            return DecodedPlane{static_cast<const std::uint8_t*>(picture.data[index]), static_cast<int>(picture.stride[index > 0]), height, picture.p.bpc > 8 ? 2 : 1, picture.p.bpc};
+        };
+        I420Frame::CopyPlane(result->yPlane, result->yStride, plane(0, result->height));
+        I420Frame::CopyPlane(result->uPlane, result->uStride, plane(1, halfHeight));
+        I420Frame::CopyPlane(result->vPlane, result->vStride, plane(2, halfHeight));
 
         dav1d_picture_unref(&picture);
         return result;
