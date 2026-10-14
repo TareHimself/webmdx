@@ -6,6 +6,9 @@
 #include "webmdx/utils.h"
 
 namespace wdx {
+    // The cluster after current when it can be reached with the data the source holds, null otherwise.
+    const mkvparser::Cluster* NextKnownCluster(const mkvparser::Cluster* current);
+
     struct BlockEntries {
         struct Iterator {
             using PairType = std::pair<const mkvparser::Block *,double>;

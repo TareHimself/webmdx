@@ -1,17 +1,28 @@
 #include "BlockEntries.h"
 #include <stdexcept>
 
+#include "SourceReader.h"
+
 namespace wdx {
+    const mkvparser::Cluster* NextKnownCluster(const mkvparser::Cluster* current) {
+        const auto segment = current->m_pSegment;
+        static_cast<SourceReader*>(segment->m_pReader)->focus = current->m_element_start;
+        const mkvparser::Cluster* next = nullptr;
+        long long neededAt = 0;
+        long neededLength = 0;
+        // Segment::GetNext cannot be used here, it expects the whole file for clusters a seek jumped to.
+        return segment->ParseNext(current, next, neededAt, neededLength) == 0 ? next : nullptr;
+    }
+
     BlockEntries::Iterator &BlockEntries::Iterator::operator++() {
         const mkvparser::BlockEntry *current = _current;
         do {
             auto cluster = current->GetCluster();
-            const auto segment = cluster->m_pSegment;
             const mkvparser::BlockEntry *next;
             cluster->GetNext(current, next);
             auto time = nanoSecsToSecs(current->GetBlock()->GetTime(cluster));
             if (next == nullptr || next->EOS()) {
-                cluster = segment->GetNext(cluster);
+                cluster = NextKnownCluster(cluster);
                 if (cluster == nullptr || cluster->EOS()) {
                     throw std::runtime_error("No more blocks to iterate");
                 }

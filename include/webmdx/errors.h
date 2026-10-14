@@ -7,10 +7,12 @@
 namespace wdx {
 
 
+    // Invalid data after the headers.
     class SourceDecodeException : public std::exception{
 
     };
 
+    // Not WebM, ended inside the headers, or headers longer than SourceDecoder::SetMaxHeaderSize.
     class HeaderDecodeFailedException : public std::exception{
 
     };
