@@ -1,5 +1,5 @@
-#pragma once
 #include <webmdx/Packet.h>
+#include <algorithm>
 
 namespace wdx {
     Packet::Packet(const double time, const std::span<std::uint8_t>& data, const bool isKey)
