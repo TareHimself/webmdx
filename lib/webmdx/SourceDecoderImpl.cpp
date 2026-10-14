@@ -303,10 +303,14 @@ namespace wdx {
             target->GetEntry(count - 1, last);
         }
 
-        // Only the last listed block can still be missing its data.
-        if (last != nullptr && !IsBlockAvailable(last)) {
+        // Listed blocks can still be missing their data: the last one while the source grows, any of them once
+        // the source has dropped what it was told it could.
+        const auto held = Held();
+        if (last != nullptr && BlockEnd(last) > held) {
             extent.complete = SourceIsComplete();
-            extent.needed = last->GetBlock()->m_start + last->GetBlock()->m_size;
+            extent.needed = std::max(extent.needed, BlockEnd(last));
+        }
+        while (last != nullptr && BlockEnd(last) > held) {
             const auto index = last->GetIndex();
             last = nullptr;
             if (index > 0) {
@@ -373,8 +377,12 @@ namespace wdx {
     }
 
     bool SourceDecoder::Impl::IsBlockAvailable(const mkvparser::BlockEntry* entry) const {
+        return BlockEnd(entry) <= reader.source->GetAvailableFrom(entry->GetBlock()->m_start);
+    }
+
+    std::int64_t SourceDecoder::Impl::BlockEnd(const mkvparser::BlockEntry* entry) {
         const auto block = entry->GetBlock();
-        return block->m_start + block->m_size <= reader.source->GetAvailableFrom(block->m_start);
+        return block->m_start + block->m_size;
     }
 
     bool SourceDecoder::Impl::LoadCues() {
@@ -770,20 +778,6 @@ namespace wdx {
                 }
             }
             cluster = current;
-        }
-
-        // The source may have dropped what was released, and playing on from here reads all of it again.
-        auto from = seekCluster->m_element_start;
-        for (const auto position : {&preRoll, &audio, &key, &video}) {
-            if (position->entry != nullptr) {
-                from = std::min(from, position->entry->GetBlock()->m_start);
-            }
-        }
-        if (from < released) {
-            reader.focus = from;
-            if (Held() < released && !Request(released)) {
-                return DemuxResult::IncompleteCluster;
-            }
         }
 
         decodedPosition = timestamp;
