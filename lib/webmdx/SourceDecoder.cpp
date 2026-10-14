@@ -17,12 +17,40 @@ namespace wdx {
         _impl->SetSource(source);
     }
 
-    DemuxResult SourceDecoder::Demux(double seconds) const {
-        return _impl->Decode(seconds);
+    DemuxResult SourceDecoder::EnsureHeader() const {
+        return _impl->Prepare();
     }
 
-    void SourceDecoder::Seek(double seconds) const {
-        _impl->Seek(seconds);
+    bool SourceDecoder::IsReady() const {
+        return _impl->parseState == Impl::ParseState::Ready;
+    }
+
+    DemuxResult SourceDecoder::Demux(double seconds) const {
+        const auto result = _impl->Decode(seconds);
+        _impl->ReleaseConsumed();
+        return result;
+    }
+
+    DemuxResult SourceDecoder::Seek(double seconds) const {
+        const auto result = _impl->Seek(seconds);
+        _impl->ReleaseConsumed();
+        return result;
+    }
+
+    ByteRange SourceDecoder::GetNeededRange() const {
+        return _impl->bytesNeeded > 0 ? ByteRange{_impl->neededStart, _impl->bytesNeeded} : ByteRange{};
+    }
+
+    std::int64_t SourceDecoder::GetBytesNeeded() const {
+        return _impl->bytesNeeded;
+    }
+
+    void SourceDecoder::SetMaxHeaderSize(const std::int64_t bytes) const {
+        _impl->maxHeaderSize = bytes;
+    }
+
+    std::int64_t SourceDecoder::GetMaxHeaderSize() const {
+        return _impl->maxHeaderSize;
     }
 
     double SourceDecoder::GetDuration() const {
@@ -78,6 +106,14 @@ namespace wdx {
     void SourceDecoder::SetAudioPacketCallback(const AudioPacketCallback& callback) const
     {
         _impl->_audioPacketCallback = callback;
+    }
+
+    void SourceDecoder::SetVideoDecoderFactory(const VideoDecoderFactory &factory) const {
+        _impl->videoDecoderFactory = factory ? factory : VideoDecoderFactory{IVideoDecoder::Create};
+    }
+
+    void SourceDecoder::SetAudioDecoderFactory(const AudioDecoderFactory &factory) const {
+        _impl->audioDecoderFactory = factory ? factory : AudioDecoderFactory{IAudioDecoder::Create};
     }
 
     void SourceDecoder::SetVideoPacketCallback(const VideoPacketCallback& callback) const

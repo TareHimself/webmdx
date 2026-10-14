@@ -32,6 +32,12 @@ add_decode_test(vp8-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus.webm 320 240 5
 add_decode_test(vp9-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm 320 240 50)
 add_decode_test(av1-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm 320 240 50)
 
+# vp8-opus with its blocks split over two clusters, the first of which has no audio
+add_decode_test(vp8-opus-late-audio ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus-late-audio.webm 320 240 50)
+
+# vp8-opus with a subtitle track, which is neither audio nor video, between its blocks
+add_decode_test(vp8-opus-subtitles ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus-subtitles.webm 320 240 50)
+
 # VP8 video with Vorbis audio, from https://www.webmfiles.org/demo-files/
 add_downloaded_decode_test(big-buck-bunny-trailer https://dl6.webmfiles.org/big-buck-bunny_trailer.webm
     519ce67113629c8556337602c28e7dd1286bed58d60936da5dde5215f6427d74 640 360 812)
