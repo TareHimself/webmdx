@@ -1,7 +1,7 @@
 #pragma once
 #ifdef WEBM_DX_CODEC_VIDEO_DAV1D
 #include "webmdx/IVideoDecoder.h"
-#include "I420Frame.h"
+#include "PlanarFrame.h"
 #include <dav1d/dav1d.h>
 #include <deque>
 namespace wdx {

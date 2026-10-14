@@ -13,10 +13,17 @@ namespace wdx {
         int bitDepth{8};
     };
 
-    // Planar YUV 4:2:0 frame storage shared by every video decoder backend
+    // How the chroma planes are subsampled against the luma plane
+    enum class ChromaLayout {
+        I420,
+        I422,
+        I444,
+    };
+
+    // Planar YUV frame storage shared by every video decoder backend
     // (dav1d and vpx both produce this layout), with stride-aware conversions
     // implemented once via libyuv instead of duplicated per backend.
-    struct I420Frame final : IDecodedVideoFrame {
+    struct PlanarFrame final : IDecodedVideoFrame {
         std::vector<std::uint8_t> yPlane{};
         std::vector<std::uint8_t> uPlane{};
         std::vector<std::uint8_t> vPlane{};
@@ -27,11 +34,14 @@ namespace wdx {
         int uStride{0};
         int vStride{0};
         int alphaStride{0};
+        ChromaLayout layout{ChromaLayout::I420};
         double time{0};
 
         [[nodiscard]] double GetTime() const override { return time; }
         void ToRgba(const std::span<std::uint8_t>& frame) override;
         void ToNV12(const std::span<std::uint8_t>& y, const std::span<std::uint8_t>& uv) override;
+
+        [[nodiscard]] int ChromaHeight() const { return layout == ChromaLayout::I420 ? (height + 1) / 2 : height; }
 
         // Stores a plane as 8 bit samples, dropping the low bits of deeper ones
         static void CopyPlane(std::vector<std::uint8_t>& plane, int& stride, const DecodedPlane& source);

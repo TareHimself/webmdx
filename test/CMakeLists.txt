@@ -37,6 +37,12 @@ add_decode_test(av1-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm 320 240 5
 add_decode_test(vp9-10bit-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-10bit-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm)
 add_decode_test(av1-10bit-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-10bit-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm)
 
+# The same pictures with 4:2:2 and 4:4:4 chroma, VP9 profile 1 and AV1 Professional and High
+add_decode_test(vp9-422-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-422-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm)
+add_decode_test(vp9-444-opus ${CMAKE_CURRENT_LIST_DIR}/media/vp9-444-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/vp9-opus.webm)
+add_decode_test(av1-422-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-422-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm)
+add_decode_test(av1-444-opus ${CMAKE_CURRENT_LIST_DIR}/media/av1-444-opus.webm 320 240 50 ${CMAKE_CURRENT_LIST_DIR}/media/av1-opus.webm)
+
 # vp8-opus with its blocks split over two clusters, the first of which has no audio
 add_decode_test(vp8-opus-late-audio ${CMAKE_CURRENT_LIST_DIR}/media/vp8-opus-late-audio.webm 320 240 50)
 
