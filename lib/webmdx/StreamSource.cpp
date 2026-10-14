@@ -1,4 +1,5 @@
 #include "webmdx/StreamSource.h"
+#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
