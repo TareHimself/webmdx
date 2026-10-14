@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 project(webmdx-test LANGUAGES CXX)
 
 find_package(webmdx REQUIRED)
-find_package(cpr REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp NetworkSource.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE webmdx::webmdx cpr::cpr)
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE webmdx::webmdx)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 install(FILES ${SILO_RUNTIME_LIBRARIES} DESTINATION bin)
