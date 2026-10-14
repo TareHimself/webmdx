@@ -11,7 +11,6 @@ class WebmdxTest(SiloPackage):
 
     def deps(self):
         self.dep("..")
-        self.dep("recipes/cpr")
         self.tool("cmake@4.3")
         self.tool("ninja@1.13")
 
