@@ -8,12 +8,12 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.library }} library
-    # silo gets libvpx and dav1d from Conan, which it can only describe MSVC to so far
-    runs-on: windows-latest
+    name: ${{ matrix.os }} ${{ matrix.library }} library
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
         library: [shared, static]
     defaults:
       run:
@@ -67,5 +67,5 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: silo-logs-${{ matrix.library }}
+          name: silo-logs-${{ matrix.os }}-${{ matrix.library }}
           path: ${{ runner.temp }}/reports
